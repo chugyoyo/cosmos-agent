@@ -31,6 +31,14 @@
             <el-icon><ShoppingCart /></el-icon>
             <span>智能销售</span>
           </el-menu-item>
+          <el-menu-item index="/orchestration">
+            <el-icon><Connection /></el-icon>
+            <span>Agent编排</span>
+          </el-menu-item>
+          <el-menu-item index="/chat">
+            <el-icon><ChatDotRound /></el-icon>
+            <span>智能聊天</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -99,7 +107,9 @@ const currentPage = computed(() => {
     '/settings': '设置',
     '/agents': '智能工程师',
     '/testing': '智能测试',
-    '/sales': '智能销售'
+    '/sales': '智能销售',
+    '/orchestration': 'Agent编排',
+    '/chat': '智能聊天'
   }
   return routeMap[route.path] || '未知页面'
 })

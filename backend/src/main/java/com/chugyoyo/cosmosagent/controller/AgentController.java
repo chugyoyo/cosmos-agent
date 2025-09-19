@@ -48,12 +48,8 @@ public class AgentController {
 
     @PutMapping("/{id}")
     public ApiResp<AgentDTO> updateAgent(@PathVariable Long id, @Valid @RequestBody AgentDTO dto) {
-        try {
-            AgentDTO updated = agentService.updateAgent(id, dto);
-            return ApiResp.success(updated);
-        } catch (RuntimeException e) {
-            return ApiResp.fail(HttpStatus.NOT_FOUND, "Agent not found");
-        }
+        AgentDTO updated = agentService.updateAgent(id, dto);
+        return ApiResp.success(updated);
     }
 
     @DeleteMapping("/{id}")

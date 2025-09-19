@@ -32,7 +32,7 @@ public class AgentService extends ServiceImpl<AgentMapper, Agent> {
     
     public List<AgentDTO> getDeployedAgents() {
         LambdaQueryWrapper<Agent> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Agent::getIsDeployed, true);
+//        wrapper.eq(Agent::getIsDeployed, true); TODO
         return list(wrapper).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
