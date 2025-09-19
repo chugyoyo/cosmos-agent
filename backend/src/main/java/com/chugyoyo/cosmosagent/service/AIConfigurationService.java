@@ -5,14 +5,23 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chugyoyo.cosmosagent.dto.AIConfigurationDTO;
 import com.chugyoyo.cosmosagent.entity.AIConfiguration;
 import com.chugyoyo.cosmosagent.mapper.AIConfigurationMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class AIConfigurationService extends ServiceImpl<AIConfigurationMapper, AIConfiguration> {
+
+    @Autowired
+    private SpringAiTestService springAiTestService;
 
     public List<AIConfigurationDTO> getAllConfigurations() {
         return list().stream()
@@ -63,7 +72,7 @@ public class AIConfigurationService extends ServiceImpl<AIConfigurationMapper, A
         removeById(id);
     }
     
-    public boolean testConnection(String provider) {
+    public Map<String, Object> testConnection(String provider) {
         try {
             LambdaQueryWrapper<AIConfiguration> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(AIConfiguration::getProvider, provider);
@@ -72,9 +81,22 @@ public class AIConfigurationService extends ServiceImpl<AIConfigurationMapper, A
                 throw new RuntimeException("Configuration not found");
             }
             
-            return validateConfiguration(config);
+            // 首先验证基本配置
+            if (!validateConfiguration(config)) {
+                Map<String, Object> result = new java.util.HashMap<>();
+                result.put("success", false);
+                result.put("message", "配置不完整，请检查 API Key");
+                return result;
+            }
+            
+            // 使用 Spring AI 进行真实连接测试
+            return springAiTestService.testConnection(provider);
         } catch (Exception e) {
-            return false;
+            log.error("测试连接失败", e);
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("success", false);
+            result.put("message", "测试失败: " + e.getMessage());
+            return result;
         }
     }
     

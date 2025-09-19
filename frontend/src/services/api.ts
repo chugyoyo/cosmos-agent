@@ -27,7 +27,12 @@ export const configurationApi = {
   create: (config: AIConfiguration) => api.post<ApiResponse<AIConfiguration>>('/configurations', config),
   update: (id: number, config: AIConfiguration) => api.put<ApiResponse<AIConfiguration>>(`/configurations/${id}`, config),
   delete: (id: number) => api.delete<ApiResponse<void>>(`/configurations/${id}`),
-  testConnection: (provider: string) => api.post<ApiResponse<boolean>>(`/configurations/${provider}/test`)
+  testConnection: (provider: string) => api.post<ApiResponse<any>>(`/configurations/${provider}/test`)
+}
+
+export const aiTestApi = {
+  testConnection: (provider: string) => api.post<ApiResponse<any>>(`/ai-test/${provider}/connection`),
+  testChat: (provider: string, message: string) => api.post<ApiResponse<any>>(`/ai-test/${provider}/chat`, { message }),
 }
 
 export const agentApi = {

@@ -26,15 +26,22 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200">
+          <el-table-column label="操作" width="300">
             <template #default="{ row }">
-              <el-button size="small" @click="testConnection(row.provider)">
+              <el-button 
+                size="small" 
+                @click="testConnection(row.provider)"
+                :loading="testingConnection === row.provider"
+              >
+                <el-icon><Connection /></el-icon>
                 测试连接
               </el-button>
               <el-button size="small" type="primary" @click="editConfiguration(row)">
+                <el-icon><Edit /></el-icon>
                 编辑
               </el-button>
               <el-button size="small" type="danger" @click="deleteConfiguration(row.id)">
+                <el-icon><Delete /></el-icon>
                 删除
               </el-button>
             </template>
@@ -57,11 +64,11 @@
       >
         <el-form-item label="提供商" prop="provider">
           <el-select v-model="configForm.provider" placeholder="选择提供商">
-            <el-option label="OpenAI" value="openai" />
-            <el-option label="Azure" value="azure" />
-            <el-option label="阿里云通义千问" value="qwen" />
-            <el-option label="智谱 AI" value="zhipu" />
-            <el-option label="百度千帆" value="qianfan" />
+<!--            <el-option label="OpenAI" value="openai" />-->
+<!--            <el-option label="Azure" value="azure" />-->
+<!--            <el-option label="阿里云通义千问" value="qwen" />-->
+            <el-option label="智谱 AI" value="zhipuai" />
+<!--            <el-option label="百度千帆" value="qianfan" />-->
           </el-select>
         </el-form-item>
         
@@ -98,20 +105,32 @@
         <el-button type="primary" @click="saveConfiguration">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 测试结果对话框 -->
+    <TestResultDialog
+      v-model:visible="showTestDialog"
+      :provider="testProvider"
+      :test-result="testResult"
+      @retry="() => testConnection(testProvider)"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { configurationApi } from '@/services/api'
+import { configurationApi, aiTestApi } from '@/services/api'
 import { extractData, handleApiError } from '@/utils/apiHelpers'
 import type { AIConfiguration } from '@/types'
 
 const configurations = ref<AIConfiguration[]>([])
 const loading = ref(false)
+const testingConnection = ref<string | null>(null)
 const showAddDialog = ref(false)
 const editingConfig = ref<AIConfiguration | null>(null)
+const showTestDialog = ref(false)
+const testResult = ref<any>(null)
+const testProvider = ref('')
 
 const configForm = reactive<AIConfiguration>({
   provider: '',
@@ -185,12 +204,65 @@ const deleteConfiguration = async (id: number) => {
 }
 
 const testConnection = async (provider: string) => {
+  testingConnection.value = provider
+  testProvider.value = provider
+  
   try {
     const response = await configurationApi.testConnection(provider)
-    if (extractData(response)) {
-      ElMessage.success('连接测试成功')
+    const result = extractData(response)
+    
+    testResult.value = result
+    showTestDialog.value = true
+    
+    if (result.success) {
+      ElMessage({
+        message: `连接测试成功！${result.message}`,
+        type: 'success',
+        duration: 3000
+      })
     } else {
-      ElMessage.error('连接测试失败')
+      ElMessage({
+        message: `连接测试失败: ${result.message}`,
+        type: 'error',
+        duration: 3000
+      })
+    }
+  } catch (error) {
+    ElMessage.error(handleApiError(error))
+  } finally {
+    testingConnection.value = null
+  }
+}
+
+const testChat = async (provider: string) => {
+  const testMessage = '你好，请简单介绍一下你自己'
+  
+  try {
+    const response = await aiTestApi.testChat(provider, testMessage)
+    const result = extractData(response)
+    
+    if (result.success) {
+      ElMessage({
+        message: `聊天测试成功！`,
+        type: 'success',
+        duration: 3000
+      })
+      
+      // 显示聊天结果对话框
+      ElMessageBox.alert(
+        `AI 响应:\n\n${result.response}`,
+        `${result.provider} 聊天测试`,
+        {
+          confirmButtonText: '确定',
+          type: 'success'
+        }
+      )
+    } else {
+      ElMessage({
+        message: `聊天测试失败: ${result.message}`,
+        type: 'error',
+        duration: 5000
+      })
     }
   } catch (error) {
     ElMessage.error(handleApiError(error))

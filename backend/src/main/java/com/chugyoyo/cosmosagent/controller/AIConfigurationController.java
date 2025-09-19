@@ -5,15 +5,18 @@ import com.chugyoyo.cosmosagent.dto.AIConfigurationDTO;
 import com.chugyoyo.cosmosagent.service.AIConfigurationService;
 import com.chugyoyo.cosmosagent.common.ApiResp;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/configurations")
 @RequiredArgsConstructor
+@Slf4j
 @CrossOrigin(origins = "*")
 public class AIConfigurationController {
 
@@ -49,8 +52,8 @@ public class AIConfigurationController {
     }
 
     @PostMapping("/{provider}/test")
-    public ApiResp<Boolean> testConnection(@PathVariable String provider) {
-        boolean isConnected = configurationService.testConnection(provider);
-        return ApiResp.success(isConnected);
+    public ApiResp<Map<String, Object>> testConnection(@PathVariable String provider) {
+        Map<String, Object> result = configurationService.testConnection(provider);
+        return ApiResp.success(result);
     }
 }
