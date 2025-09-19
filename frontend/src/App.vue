@@ -19,9 +19,9 @@
             <el-icon><Setting /></el-icon>
             <span>设置</span>
           </el-menu-item>
-          <el-menu-item index="/orchestration">
+          <el-menu-item index="/agent">
             <el-icon><Connection /></el-icon>
-            <span>Agent编排</span>
+            <span>Agent管理</span>
           </el-menu-item>
           <el-menu-item index="/chat">
             <el-icon><ChatDotRound /></el-icon>
@@ -94,7 +94,7 @@ const currentPage = computed(() => {
     '/dashboard': '首页',
     '/settings': '设置',
     '/testing': '智能测试',
-    '/orchestration': 'Agent编排',
+    '/agent': 'Agent管理',
     '/chat': '智能聊天'
   }
   return routeMap[route.path] || '未知页面'

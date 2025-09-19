@@ -13,8 +13,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("agent_orchestration")
-public class AgentOrchestration {
+@TableName("agent")
+public class Agent {
     
     @TableId(type = IdType.AUTO)
     private Long id;

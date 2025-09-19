@@ -1,37 +1,37 @@
-package com.chugyoyo.cosmosagent.entity;
+package com.chugyoyo.cosmosagent.dto;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("agent_orchestration_node")
-public class AgentOrchestrationNode {
+public class AgentNodeDTO {
     
-    @TableId(type = IdType.AUTO)
     private Long id;
     
-    private Long orchestrationId;
+    @NotNull(message = "代理ID不能为空")
+    private Long agentId;
     
+    @NotBlank(message = "代理节点名称不能为空")
     private String name;
     
+    @NotBlank(message = "代理节点类型不能为空")
     private String type;
     
     private Integer status;
     
+    @NotNull(message = "代理节点X坐标不能为空")
     private Integer positionX;
     
+    @NotNull(message = "代理节点Y坐标不能为空")
     private Integer positionY;
     
-    @TableField(typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
     private String config;
     
     private String yamlConfig;

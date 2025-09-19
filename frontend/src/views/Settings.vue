@@ -234,41 +234,6 @@ const testConnection = async (provider: string) => {
   }
 }
 
-const testChat = async (provider: string) => {
-  const testMessage = '你好，请简单介绍一下你自己'
-  
-  try {
-    const response = await aiTestApi.testChat(provider, testMessage)
-    const result = extractData(response)
-    
-    if (result.success) {
-      ElMessage({
-        message: `聊天测试成功！`,
-        type: 'success',
-        duration: 3000
-      })
-      
-      // 显示聊天结果对话框
-      ElMessageBox.alert(
-        `AI 响应:\n\n${result.response}`,
-        `${result.provider} 聊天测试`,
-        {
-          confirmButtonText: '确定',
-          type: 'success'
-        }
-      )
-    } else {
-      ElMessage({
-        message: `聊天测试失败: ${result.message}`,
-        type: 'error',
-        duration: 5000
-      })
-    }
-  } catch (error) {
-    ElMessage.error(handleApiError(error))
-  }
-}
-
 const resetForm = () => {
   editingConfig.value = null
   Object.assign(configForm, {

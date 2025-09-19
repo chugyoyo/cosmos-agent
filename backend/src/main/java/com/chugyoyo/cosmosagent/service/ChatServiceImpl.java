@@ -25,7 +25,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageService chatMessageService;
     private final ZhipuaiService zhipuaiService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final AgentOrchestrationService agentOrchestrationService;
+    private final AgentService agentService;
 
     @Override
     @Transactional

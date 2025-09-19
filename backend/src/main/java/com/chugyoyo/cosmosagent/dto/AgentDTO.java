@@ -5,17 +5,17 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AgentOrchestrationDTO {
+public class AgentDTO {
     
     private Long id;
     
-    @NotBlank(message = "编排名称不能为空")
+    @NotBlank(message = "代理名称不能为空")
     private String name;
     
     private String description;
@@ -30,5 +30,5 @@ public class AgentOrchestrationDTO {
     
     private String config;
     
-    private java.util.List<AgentOrchestrationNodeDTO> nodes;
+    private List<AgentNodeDTO> nodes;
 }

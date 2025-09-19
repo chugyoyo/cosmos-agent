@@ -1,31 +1,31 @@
 <template>
-  <div class="orchestration-container">
-    <div class="orchestration-header">
-      <h2>Agent 编排</h2>
+  <div class="agent-container">
+    <div class="agent-header">
+      <h2>Agent 管理</h2>
       <div class="header-actions">
-        <button @click="createNewOrchestration" class="btn btn-primary">新建编排</button>
-        <button @click="saveOrchestration" class="btn btn-success" :disabled="!currentOrchestration">保存</button>
+        <button @click="createNewAgent" class="btn btn-primary">新建代理</button>
+        <button @click="saveAgent" class="btn btn-success" :disabled="!currentAgent">保存</button>
       </div>
     </div>
 
-    <div class="orchestration-content">
+    <div class="agent-content">
       <div class="sidebar">
-        <h3>编排列表</h3>
-        <div class="orchestration-list">
-          <div v-for="orch in orchestrations" :key="orch.id" 
-               class="orchestration-item" 
-               :class="{ active: currentOrchestration?.id === orch.id }"
-               @click="selectOrchestration(orch)">
-            <div class="orchestration-name">{{ orch.name }}</div>
-            <div class="orchestration-desc">{{ orch.description }}</div>
+        <h3>代理列表</h3>
+        <div class="agent-list">
+          <div v-for="agent in agents" :key="agent.id" 
+               class="agent-item" 
+               :class="{ active: currentAgent?.id === agent.id }"
+               @click="selectAgent(agent)">
+            <div class="agent-name">{{ agent.name }}</div>
+            <div class="agent-desc">{{ agent.description }}</div>
           </div>
         </div>
       </div>
 
       <div class="main-content">
-        <div v-if="currentOrchestration" class="orchestration-workspace">
+        <div v-if="currentAgent" class="agent-workspace">
           <div class="workspace-header">
-            <h3>{{ currentOrchestration.name }}</h3>
+            <h3>{{ currentAgent.name }}</h3>
             <div class="workspace-actions">
               <button @click="addNode" class="btn btn-sm btn-primary">添加节点</button>
               <button @click="startLinkCreation" class="btn btn-sm btn-info">添加连线</button>
@@ -34,14 +34,14 @@
           </div>
           
           <div class="canvas-container">
-            <div ref="canvas" class="orchestration-canvas">
+            <div ref="canvas" class="agent-canvas">
               <!-- D3将在这里动态创建SVG -->
             </div>
           </div>
         </div>
         
         <div v-else class="empty-state">
-          <p>请选择或创建一个编排</p>
+          <p>请选择或创建一个代理</p>
         </div>
       </div>
     </div>
@@ -164,26 +164,26 @@
       </div>
     </div>
 
-    <!-- 新建编排模态框 -->
+    <!-- 新建代理模态框 -->
     <div v-if="showCreateModal" class="modal-overlay" @click="closeCreateModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>新建编排</h3>
+          <h3>新建代理</h3>
           <button @click="closeCreateModal" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label>编排名称:</label>
-            <input v-model="newOrchestration.name" class="form-control" placeholder="输入编排名称" />
+            <label>代理名称:</label>
+            <input v-model="newAgent.name" class="form-control" placeholder="输入代理名称" />
           </div>
           <div class="form-group">
             <label>描述:</label>
-            <textarea v-model="newOrchestration.description" class="form-control" rows="3" 
-                      placeholder="输入编排描述"></textarea>
+            <textarea v-model="newAgent.description" class="form-control" rows="3" 
+                      placeholder="输入代理描述"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="createOrchestration" class="btn btn-primary">创建</button>
+          <button @click="createAgent" class="btn btn-primary">创建</button>
           <button @click="closeCreateModal" class="btn btn-secondary">取消</button>
         </div>
       </div>
@@ -193,14 +193,14 @@
 
 <script>
 import * as d3 from 'd3';
-import { orchestrationApi } from '@/services/api';
+import { agentOrchestrationApi } from '@/services/api';
 
 export default {
-  name: 'AgentOrchestration',
+  name: 'Agent',
   data() {
     return {
-      orchestrations: [],
-      currentOrchestration: null,
+      agents: [],
+      currentAgent: null,
       graphNodes: [],
       graphLinks: [],
       selectedNode: null,
@@ -212,7 +212,7 @@ export default {
       showCreateModal: false,
       linkCreationMode: false,
       tempLinkSource: null,
-      newOrchestration: {
+      newAgent: {
         name: '',
         description: ''
       },
@@ -223,7 +223,7 @@ export default {
     };
   },
   mounted() {
-    this.loadOrchestrations();
+    this.loadAgents();
     window.addEventListener('resize', this.handleResize);
   },
   beforeUnmount() {
@@ -231,27 +231,27 @@ export default {
     window.removeEventListener('resize', this.handleResize);
   },
   methods: {
-    async loadOrchestrations() {
+    async loadAgents() {
       try {
-        const response = await orchestrationApi.getAll();
-        this.orchestrations = response.data.data;
-        console.log("loadOrchestrations done, this.orchestrations", this.orchestrations);
+        const response = await agentOrchestrationApi.getAll();
+        this.agents = response.data.data;
+        console.log("loadAgents done, this.agents", this.agents);
       } catch (error) {
-        console.error('加载编排列表失败:', error);
+        console.error('加载代理列表失败:', error);
       }
     },
     
-    async selectOrchestration(orch) {
-      this.currentOrchestration = orch;
-      console.log("orchestrations", this.orchestrations);
-      console.log("selectOrchestration, orch", orch);
-      await this.loadOrchestrationNodes(orch.id);
+    async selectAgent(agent) {
+      this.currentAgent = agent;
+      console.log("agents", this.agents);
+      console.log("selectAgent, agent", agent);
+      await this.loadAgentNodes(agent.id);
     },
     
-    async loadOrchestrationNodes(orchestrationId) {
+    async loadAgentNodes(agentId) {
       try {
         // 加载节点
-        const nodesResponse = await orchestrationApi.getNodes(orchestrationId);
+        const nodesResponse = await agentOrchestrationApi.getNodes(agentId);
         const nodes = nodesResponse.data.data.map(node => ({
           id: node.id,
           name: node.name,
@@ -702,21 +702,21 @@ export default {
       }
     },
     
-    createNewOrchestration() {
+    createNewAgent() {
       this.showCreateModal = true;
-      this.newOrchestration = { name: '', description: '' };
+      this.newAgent = { name: '', description: '' };
     },
     
     closeCreateModal() {
       this.showCreateModal = false;
     },
     
-    async createOrchestration() {
+    async createAgent() {
       try {
-        const response = await orchestrationApi.create(this.newOrchestration);
+        const response = await agentOrchestrationApi.create(this.newAgent);
         const data = response.data.data || response.data;
-        this.orchestrations.push(data);
-        this.currentOrchestration = data;
+        this.agents.push(data);
+        this.currentAgent = data;
         this.showCreateModal = false;
         this.graphNodes = [];
         this.graphLinks = [];
@@ -724,7 +724,7 @@ export default {
         this.tempLinkSource = null;
         this.destroyGraph();
       } catch (error) {
-        console.error('创建编排失败:', error);
+        console.error('创建代理失败:', error);
       }
     },
     
@@ -765,7 +765,7 @@ export default {
       // 如果是现有节点，更新到后端
       if (this.selectedNode.id < 10000) { // 假设ID小于10000的是已存在的节点
         try {
-          await orchestrationApi.updateNode(this.selectedNode.id, {
+          await agentOrchestrationApi.updateNode(this.selectedNode.id, {
             name: this.editingNode.name,
             type: this.editingNode.type,
             positionX: Math.round(this.editingNode.x || 0),
@@ -791,7 +791,7 @@ export default {
         // 如果是现有节点，从后端删除
         if (this.selectedNode.id < 10000) {
           try {
-            await orchestrationApi.deleteNode(this.selectedNode.id);
+            await agentOrchestrationApi.deleteNode(this.selectedNode.id);
           } catch (error) {
             console.error('删除节点失败:', error);
           }
@@ -813,8 +813,8 @@ export default {
       }
     },
     
-    async saveOrchestration() {
-      if (!this.currentOrchestration) return;
+    async saveAgent() {
+      if (!this.currentAgent) return;
       
       try {
         // 保存节点位置和配置
@@ -823,7 +823,7 @@ export default {
           links: this.graphLinks
         };
         
-        await orchestrationApi.updateFlow(this.currentOrchestration.id, JSON.stringify(flowData));
+        await agentOrchestrationApi.updateFlow(this.currentAgent.id, JSON.stringify(flowData));
         
         // 保存每个节点的配置
         for (const node of this.graphNodes) {
@@ -838,9 +838,9 @@ export default {
           }
         }
         
-        alert('编排保存成功！');
+        alert('代理保存成功！');
       } catch (error) {
-        console.error('保存编排失败:', error);
+        console.error('保存代理失败:', error);
         alert('保存失败，请重试');
       }
     },
@@ -947,14 +947,14 @@ export default {
 </script>
 
 <style scoped>
-.orchestration-container {
+.agent-container {
   height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #f5f5f5;
 }
 
-.orchestration-header {
+.agent-header {
   padding: 20px;
   background: white;
   border-bottom: 1px solid #ddd;
@@ -963,7 +963,7 @@ export default {
   align-items: center;
 }
 
-.orchestration-content {
+.agent-content {
   flex: 1;
   display: flex;
 }
@@ -981,11 +981,11 @@ export default {
   padding: 20px;
 }
 
-.orchestration-list {
+.agent-list {
   margin-top: 15px;
 }
 
-.orchestration-item {
+.agent-item {
   padding: 12px;
   margin-bottom: 8px;
   border: 1px solid #ddd;
@@ -994,21 +994,21 @@ export default {
   transition: all 0.3s;
 }
 
-.orchestration-item:hover {
+.agent-item:hover {
   background-color: #f0f0f0;
 }
 
-.orchestration-item.active {
+.agent-item.active {
   background-color: #e3f2fd;
   border-color: #2196F3;
 }
 
-.orchestration-name {
+.agent-name {
   font-weight: bold;
   margin-bottom: 4px;
 }
 
-.orchestration-desc {
+.agent-desc {
   font-size: 12px;
   color: #666;
 }
@@ -1027,7 +1027,7 @@ export default {
   overflow: hidden;
 }
 
-.orchestration-canvas {
+.agent-canvas {
   width: 100%;
   height: 600px;
   min-height: 400px;

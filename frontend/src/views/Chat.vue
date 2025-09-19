@@ -225,7 +225,7 @@ const currentSession = computed(() =>
 // Agent相关方法
 const loadAgents = async () => {
   try {
-    const response = await chatApi.getOrchestrationAgents()
+    const response = await chatApi.getAgents()
     if (response.data && response.data.code === 200) {
       agents.value = response.data.data || []
       

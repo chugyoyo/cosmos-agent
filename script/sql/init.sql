@@ -1,7 +1,5 @@
 create schema cosmos_agent;
 
-create database cosmos_agent;
-
 -- 进入cosmos_agent schema
 \c cosmos_agent;
 
@@ -18,45 +16,16 @@ CREATE TABLE IF NOT EXISTS ai_configurations
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Agent表
-CREATE TABLE IF NOT EXISTS agents
-(
-    id            BIGSERIAL PRIMARY KEY,
-    name          VARCHAR(200) NOT NULL,
-    type          VARCHAR(100) NOT NULL,
-    description   TEXT,
-    configuration TEXT,
-    status        VARCHAR(50) DEFAULT 'CREATED',
-    call_count    BIGINT      DEFAULT 0,
-    last_called   VARCHAR(100),
-    is_deployed   BOOLEAN     DEFAULT false,
-    created_at    TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
-);
-
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_ai_configurations_provider ON ai_configurations (provider);
-CREATE INDEX IF NOT EXISTS idx_agents_type ON agents (type);
-CREATE INDEX IF NOT EXISTS idx_agents_status ON agents (status);
-CREATE INDEX IF NOT EXISTS idx_agents_deployed ON agents (is_deployed);
 
 -- 插入示例数据
 INSERT INTO ai_configurations (provider, api_key, base_url, model, is_active)
 VALUES ('openai', 'your-openai-api-key', 'https://api.openai.com', 'gpt-4', true)
 ON CONFLICT (provider) DO NOTHING;
 
-INSERT INTO agents (name, type, description, configuration, status)
-VALUES ('Customer Service Agent', 'CUSTOMER_SERVICE', '智能客服机器人', '{"language": "zh-CN", "temperature": 0.7}',
-        'CREATED'),
-       ('Sales Assistant', 'SALES', '销售助手机器人', '{"products": ["electronics", "clothing"], "discount": 0.1}',
-        'CREATED'),
-       ('Technical Support', 'TECHNICAL', '技术支持机器人',
-        '{"expertise": ["software", "hardware"], "priority": "high"}', 'CREATED')
-ON CONFLICT DO NOTHING;
-
-
--- Agent编排表
-CREATE TABLE agent_orchestration
+-- Agent表
+CREATE TABLE agent
 (
     id          BIGSERIAL PRIMARY KEY,
     name        VARCHAR(255) NOT NULL,
@@ -68,29 +37,28 @@ CREATE TABLE agent_orchestration
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Agent编排节点表
-drop table if exists agent_orchestration_node;
-CREATE TABLE agent_orchestration_node
+-- Agent节点表
+drop table if exists agent_node;
+CREATE TABLE agent_node
 (
-    id               BIGSERIAL PRIMARY KEY,
-    orchestration_id BIGINT       NOT NULL,
-    name             VARCHAR(255) NOT NULL,
-    type             VARCHAR(100) NOT NULL,
-    status           INTEGER      DEFAULT 1,
-    position_x       INTEGER      NOT NULL,
-    position_y       INTEGER      NOT NULL,
-    config           TEXT,
-    yaml_config      TEXT,
-    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (orchestration_id) REFERENCES agent_orchestration (id) ON DELETE CASCADE
+    id          BIGSERIAL PRIMARY KEY,
+    agent_id    BIGINT       NOT NULL,
+    name        VARCHAR(255) NOT NULL,
+    type        VARCHAR(100) NOT NULL,
+    status      INTEGER   DEFAULT 1,
+    position_x  INTEGER      NOT NULL,
+    position_y  INTEGER      NOT NULL,
+    config      TEXT,
+    yaml_config TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 创建索引
-CREATE INDEX idx_agent_orchestration_name ON agent_orchestration (name);
-CREATE INDEX idx_agent_orchestration_status ON agent_orchestration (status);
-CREATE INDEX idx_agent_orchestration_node_orchestration_id ON agent_orchestration_node (orchestration_id);
-CREATE INDEX idx_agent_orchestration_node_type ON agent_orchestration_node (type);
+CREATE INDEX idx_agent_name ON agent (name);
+CREATE INDEX idx_agent_status ON agent (status);
+CREATE INDEX idx_agent_node_agent_id ON agent_node (agent_id);
+CREATE INDEX idx_agent_node_type ON agent_node (type);
 
 -- 聊天会话表
 CREATE TABLE chat_session

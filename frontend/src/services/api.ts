@@ -48,23 +48,23 @@ export const agentApi = {
   incrementCallCount: (id: number) => api.post<ApiResponse<Agent>>(`/agents/${id}/call`)
 }
 
-export const orchestrationApi = {
-  getAll: () => api.get<ApiResponse<any[]>>('/orchestrations'),
-  getById: (id: number) => api.get<ApiResponse<any>>(`/orchestrations/${id}`),
-  create: (orchestration: any) => api.post<ApiResponse<any>>('/orchestrations', orchestration),
-  update: (id: number, orchestration: any) => api.put<ApiResponse<any>>(`/orchestrations/${id}`, orchestration),
-  delete: (id: number) => api.delete<ApiResponse<void>>(`/orchestrations/${id}`),
-  updateFlow: (id: number, flowData: string) => api.put<ApiResponse<any>>(`/orchestrations/${id}/flow`, flowData),
-  getNodes: (orchestrationId: number) => api.get<ApiResponse<any[]>>(`/orchestrations/${orchestrationId}/nodes`),
-  createNode: (orchestrationId: number, node: any) => api.post<ApiResponse<any>>(`/orchestrations/${orchestrationId}/nodes`, node),
+export const agentOrchestrationApi = {
+  getAll: () => api.get<ApiResponse<any[]>>('/agents'),
+  getById: (id: number) => api.get<ApiResponse<any>>(`/agents/${id}`),
+  create: (agent: any) => api.post<ApiResponse<any>>('/agents', agent),
+  update: (id: number, agent: any) => api.put<ApiResponse<any>>(`/agents/${id}`, agent),
+  delete: (id: number) => api.delete<ApiResponse<void>>(`/agents/${id}`),
+  updateFlow: (id: number, flowData: string) => api.put<ApiResponse<any>>(`/agents/${id}/flow`, flowData),
+  getNodes: (agentId: number) => api.get<ApiResponse<any[]>>(`/agents/${agentId}/nodes`),
+  createNode: (agentId: number, node: any) => api.post<ApiResponse<any>>(`/agents/${agentId}/nodes`, node),
   updateNode: (id: number, node: any) => api.put<ApiResponse<any>>(`/nodes/${id}`, node),
   updateNodeYaml: (id: number, yamlConfig: string) => api.put<ApiResponse<any>>(`/nodes/${id}/yaml`, yamlConfig),
   deleteNode: (id: number) => api.delete<ApiResponse<void>>(`/nodes/${id}`)
 }
 
 export const chatApi = {
-  getAgents: () => api.get<ApiResponse<any[]>>('/chat/agents'),
-  getOrchestrationAgents: () => api.get<ApiResponse<any[]>>('/orchestrations'),
+  getChatAgents: () => api.get<ApiResponse<any[]>>('/chat/agents'),
+  getAgents: () => api.get<ApiResponse<any[]>>('/agents'),
   getSessions: (agentId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${agentId}`),
   createSession: (session: any) => api.post<ApiResponse<any>>('/chat/sessions', session),
   getSessionMessages: (sessionId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${sessionId}/messages`),
