@@ -147,11 +147,11 @@ const saveConfiguration = async () => {
     await formRef.value.validate()
     
     if (editingConfig.value) {
-      const response = await configurationApi.update(editingConfig.value.id!, configForm)
-      ElMessage.success(extractData(response))
+      await configurationApi.update(editingConfig.value.id!, configForm)
+      ElMessage.success('配置更新成功')
     } else {
-      const response = await configurationApi.create(configForm)
-      ElMessage.success(extractData(response))
+      await configurationApi.create(configForm)
+      ElMessage.success('配置创建成功')
     }
     
     showAddDialog.value = false
@@ -174,8 +174,8 @@ const deleteConfiguration = async (id: number) => {
       type: 'warning'
     })
     
-    const response = await configurationApi.delete(id)
-    ElMessage.success(extractData(response))
+    await configurationApi.delete(id)
+    ElMessage.success('配置删除成功')
     loadConfigurations()
   } catch (error) {
     if (error !== 'cancel') {

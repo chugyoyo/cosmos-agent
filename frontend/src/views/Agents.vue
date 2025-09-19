@@ -276,11 +276,11 @@ const saveAgent = async () => {
     await formRef.value.validate()
     
     if (editingAgent.value) {
-      const response = await agentApi.update(editingAgent.value.id!, agentForm)
-      ElMessage.success(extractData(response))
+      await agentApi.update(editingAgent.value.id!, agentForm)
+      ElMessage.success('Agent 更新成功')
     } else {
-      const response = await agentApi.create(agentForm)
-      ElMessage.success(extractData(response))
+      await agentApi.create(agentForm)
+      ElMessage.success('Agent 创建成功')
     }
     
     showAddDialog.value = false
@@ -303,8 +303,8 @@ const deleteAgent = async (id: number) => {
       type: 'warning'
     })
     
-    const response = await agentApi.delete(id)
-    ElMessage.success(extractData(response))
+    await agentApi.delete(id)
+    ElMessage.success('Agent 删除成功')
     loadAgents()
   } catch (error) {
     if (error !== 'cancel') {
@@ -318,11 +318,11 @@ const toggleDeploy = async (agent: Agent) => {
   
   try {
     if (agent.isDeployed) {
-      const response = await agentApi.undeploy(agent.id!)
-      ElMessage.success(extractData(response))
+      await agentApi.undeploy(agent.id!)
+      ElMessage.success('Agent 停用成功')
     } else {
-      const response = await agentApi.deploy(agent.id!)
-      ElMessage.success(extractData(response))
+      await agentApi.deploy(agent.id!)
+      ElMessage.success('Agent 启用成功')
     }
     
     loadAgents()

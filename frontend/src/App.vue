@@ -59,11 +59,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const isDarkMode = ref(false)
+
+// Initialize theme from localStorage or system preference
+const initializeTheme = () => {
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme) {
+    isDarkMode.value = savedTheme === 'dark'
+  } else {
+    isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  updateTheme()
+}
+
+// Update theme
+const updateTheme = () => {
+  if (isDarkMode.value) {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    localStorage.setItem('theme', 'dark')
+  } else {
+    document.documentElement.removeAttribute('data-theme')
+    localStorage.setItem('theme', 'light')
+  }
+}
+
+// Watch for theme changes
+watch(isDarkMode, updateTheme)
+
+// Initialize theme on mount
+initializeTheme()
 
 const currentPage = computed(() => {
   const routeMap: Record<string, string> = {
@@ -82,27 +110,36 @@ const currentPage = computed(() => {
   height: 100vh;
   
   .sidebar {
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-    border-right: 1px solid #2d2d4a;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    transition: all var(--transition-normal);
     
     .logo {
-      padding: 24px;
+      padding: var(--spacing-lg);
       text-align: center;
       color: white;
-      border-bottom: 1px solid #2d2d4a;
+      border-bottom: 1px solid var(--sidebar-border);
       
       h1 {
         margin: 0;
-        font-size: 24px;
-        background: linear-gradient(45deg, #1677ff, #722ed1);
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-bold);
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        background-clip: text;
+        transition: all var(--transition-normal);
       }
       
       p {
-        margin: 8px 0 0;
-        font-size: 12px;
+        margin: var(--spacing-sm) 0 0;
+        font-size: var(--font-size-xs);
         opacity: 0.7;
+        transition: opacity var(--transition-normal);
+      }
+      
+      &:hover h1 {
+        transform: scale(1.05);
       }
     }
     
@@ -111,39 +148,76 @@ const currentPage = computed(() => {
       background: transparent;
       
       :deep(.el-menu-item) {
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--sidebar-text);
+        transition: all var(--transition-fast);
+        border-radius: var(--radius-sm);
+        margin: var(--spacing-xs) var(--spacing-sm);
         
         &:hover {
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
+          background: var(--sidebar-hover);
+          color: var(--sidebar-text-active);
+          transform: translateX(4px);
         }
         
         &.is-active {
-          background: linear-gradient(90deg, #1677ff, #722ed1);
-          color: white;
+          background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+          color: var(--sidebar-text-active);
+          box-shadow: var(--shadow-md);
+          
+          &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 70%;
+            background: var(--surface-color);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+          }
+        }
+        
+        .el-icon {
+          transition: transform var(--transition-fast);
+        }
+        
+        &:hover .el-icon {
+          transform: scale(1.1);
         }
       }
     }
   }
   
   .header {
-    background: white;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 var(--spacing-lg);
+    transition: all var(--transition-normal);
     
     .header-right {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: var(--spacing-md);
+    }
+    
+    .theme-switch {
+      :deep(.el-switch__core) {
+        transition: all var(--transition-fast);
+        
+        &:hover {
+          transform: scale(1.05);
+        }
+      }
     }
   }
   
   .main-content {
-    background: #f5f5f5;
-    padding: 24px;
+    background: var(--background-color);
+    padding: var(--spacing-lg);
+    transition: all var(--transition-normal);
   }
 }
 </style>
