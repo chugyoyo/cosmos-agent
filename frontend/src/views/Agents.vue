@@ -220,6 +220,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { agentApi } from '@/services/api'
+import { extractData, handleApiError } from '@/utils/apiHelpers'
 import type { Agent } from '@/types'
 
 const agents = ref<Agent[]>([])
@@ -260,9 +261,9 @@ const loadAgents = async () => {
   loading.value = true
   try {
     const response = await agentApi.getAll()
-    agents.value = response.data
+    agents.value = extractData(response)
   } catch (error) {
-    ElMessage.error('加载 Agent 列表失败')
+    ElMessage.error(handleApiError(error))
   } finally {
     loading.value = false
   }
@@ -275,18 +276,18 @@ const saveAgent = async () => {
     await formRef.value.validate()
     
     if (editingAgent.value) {
-      await agentApi.update(editingAgent.value.id!, agentForm)
-      ElMessage.success('Agent 更新成功')
+      const response = await agentApi.update(editingAgent.value.id!, agentForm)
+      ElMessage.success(extractData(response))
     } else {
-      await agentApi.create(agentForm)
-      ElMessage.success('Agent 创建成功')
+      const response = await agentApi.create(agentForm)
+      ElMessage.success(extractData(response))
     }
     
     showAddDialog.value = false
     resetForm()
     loadAgents()
   } catch (error) {
-    ElMessage.error('保存失败')
+    ElMessage.error(handleApiError(error))
   }
 }
 
@@ -302,12 +303,12 @@ const deleteAgent = async (id: number) => {
       type: 'warning'
     })
     
-    await agentApi.delete(id)
-    ElMessage.success('删除成功')
+    const response = await agentApi.delete(id)
+    ElMessage.success(extractData(response))
     loadAgents()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(handleApiError(error))
     }
   }
 }
@@ -317,16 +318,16 @@ const toggleDeploy = async (agent: Agent) => {
   
   try {
     if (agent.isDeployed) {
-      await agentApi.undeploy(agent.id!)
-      ElMessage.success('Agent 已停止部署')
+      const response = await agentApi.undeploy(agent.id!)
+      ElMessage.success(extractData(response))
     } else {
-      await agentApi.deploy(agent.id!)
-      ElMessage.success('Agent 已部署')
+      const response = await agentApi.deploy(agent.id!)
+      ElMessage.success(extractData(response))
     }
     
     loadAgents()
   } catch (error) {
-    ElMessage.error('操作失败')
+    ElMessage.error(handleApiError(error))
   } finally {
     deploying.value[agent.id!] = false
   }

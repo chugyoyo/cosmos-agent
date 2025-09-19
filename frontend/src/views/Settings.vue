@@ -105,6 +105,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { configurationApi } from '@/services/api'
+import { extractData, handleApiError } from '@/utils/apiHelpers'
 import type { AIConfiguration } from '@/types'
 
 const configurations = ref<AIConfiguration[]>([])
@@ -131,9 +132,9 @@ const loadConfigurations = async () => {
   loading.value = true
   try {
     const response = await configurationApi.getAll()
-    configurations.value = response.data
+    configurations.value = extractData(response)
   } catch (error) {
-    ElMessage.error('加载配置失败')
+    ElMessage.error(handleApiError(error))
   } finally {
     loading.value = false
   }
@@ -146,18 +147,18 @@ const saveConfiguration = async () => {
     await formRef.value.validate()
     
     if (editingConfig.value) {
-      await configurationApi.update(editingConfig.value.id!, configForm)
-      ElMessage.success('配置更新成功')
+      const response = await configurationApi.update(editingConfig.value.id!, configForm)
+      ElMessage.success(extractData(response))
     } else {
-      await configurationApi.create(configForm)
-      ElMessage.success('配置添加成功')
+      const response = await configurationApi.create(configForm)
+      ElMessage.success(extractData(response))
     }
     
     showAddDialog.value = false
     resetForm()
     loadConfigurations()
   } catch (error) {
-    ElMessage.error('保存失败')
+    ElMessage.error(handleApiError(error))
   }
 }
 
@@ -173,12 +174,12 @@ const deleteConfiguration = async (id: number) => {
       type: 'warning'
     })
     
-    await configurationApi.delete(id)
-    ElMessage.success('删除成功')
+    const response = await configurationApi.delete(id)
+    ElMessage.success(extractData(response))
     loadConfigurations()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(handleApiError(error))
     }
   }
 }
@@ -186,13 +187,13 @@ const deleteConfiguration = async (id: number) => {
 const testConnection = async (provider: string) => {
   try {
     const response = await configurationApi.testConnection(provider)
-    if (response.data) {
+    if (extractData(response)) {
       ElMessage.success('连接测试成功')
     } else {
       ElMessage.error('连接测试失败')
     }
   } catch (error) {
-    ElMessage.error('连接测试失败')
+    ElMessage.error(handleApiError(error))
   }
 }
 

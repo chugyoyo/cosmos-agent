@@ -20,4 +20,6 @@ public class AgentDTO {
     private Long callCount;
     private String lastCalled;
     private Boolean isDeployed;
+    private String createdAt;
+    private String updatedAt;
 }

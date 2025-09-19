@@ -17,4 +17,6 @@ public class AIConfigurationDTO {
     private String baseUrl;
     private String model;
     private Boolean isActive;
+    private String createdAt;
+    private String updatedAt;
 }
