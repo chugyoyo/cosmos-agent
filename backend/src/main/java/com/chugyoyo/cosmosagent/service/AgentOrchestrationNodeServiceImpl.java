@@ -32,6 +32,14 @@ public class AgentOrchestrationNodeServiceImpl extends ServiceImpl<AgentOrchestr
     }
     
     @Override
+    public List<AgentOrchestrationNodeDTO> getAllNodes() {
+        List<AgentOrchestrationNode> nodes = nodeMapper.selectList(null);
+        return nodes.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
     public AgentOrchestrationNodeDTO getNodeById(Long id) {
         AgentOrchestrationNode node = nodeMapper.selectById(id);
         return node != null ? convertToDTO(node) : null;
@@ -90,6 +98,7 @@ public class AgentOrchestrationNodeServiceImpl extends ServiceImpl<AgentOrchestr
         dto.setOrchestrationId(entity.getOrchestrationId());
         dto.setName(entity.getName());
         dto.setType(entity.getType());
+        dto.setStatus(entity.getStatus());
         dto.setPositionX(entity.getPositionX());
         dto.setPositionY(entity.getPositionY());
         dto.setConfig(entity.getConfig());
@@ -104,6 +113,7 @@ public class AgentOrchestrationNodeServiceImpl extends ServiceImpl<AgentOrchestr
         entity.setOrchestrationId(dto.getOrchestrationId());
         entity.setName(dto.getName());
         entity.setType(dto.getType());
+        entity.setStatus(dto.getStatus());
         entity.setPositionX(dto.getPositionX());
         entity.setPositionY(dto.getPositionY());
         entity.setConfig(dto.getConfig());

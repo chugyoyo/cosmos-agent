@@ -7,6 +7,8 @@ public interface AgentOrchestrationNodeService {
     
     List<AgentOrchestrationNodeDTO> getNodesByOrchestrationId(Long orchestrationId);
     
+    List<AgentOrchestrationNodeDTO> getAllNodes();
+    
     AgentOrchestrationNodeDTO getNodeById(Long id);
     
     AgentOrchestrationNodeDTO createNode(AgentOrchestrationNodeDTO dto);

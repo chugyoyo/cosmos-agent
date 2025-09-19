@@ -64,10 +64,22 @@ export const orchestrationApi = {
 
 export const chatApi = {
   getAgents: () => api.get<ApiResponse<any[]>>('/chat/agents'),
+  getOrchestrationAgents: () => api.get<ApiResponse<any[]>>('/orchestrations'),
   getSessions: (agentId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${agentId}`),
   createSession: (session: any) => api.post<ApiResponse<any>>('/chat/sessions', session),
   getSessionMessages: (sessionId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${sessionId}/messages`),
   sendMessage: (request: any) => api.post<ApiResponse<any>>('/chat/send', request),
+  sendMessageStream: (request: any) => {
+    const token = localStorage.getItem('token')
+    return fetch('/api/chat/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: JSON.stringify(request)
+    })
+  },
   getDefaultSession: (agentId: number) => api.get<ApiResponse<any>>(`/chat/default-session/${agentId}`),
   deleteSession: (sessionId: number) => api.delete<ApiResponse<void>>(`/chat/sessions/${sessionId}`)
 }

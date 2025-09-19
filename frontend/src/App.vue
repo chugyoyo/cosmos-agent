@@ -19,18 +19,6 @@
             <el-icon><Setting /></el-icon>
             <span>设置</span>
           </el-menu-item>
-          <el-menu-item index="/agents">
-            <el-icon><Robot /></el-icon>
-            <span>智能工程师</span>
-          </el-menu-item>
-          <el-menu-item index="/testing" disabled>
-            <el-icon><Document /></el-icon>
-            <span>智能测试</span>
-          </el-menu-item>
-          <el-menu-item index="/sales" disabled>
-            <el-icon><ShoppingCart /></el-icon>
-            <span>智能销售</span>
-          </el-menu-item>
           <el-menu-item index="/orchestration">
             <el-icon><Connection /></el-icon>
             <span>Agent编排</span>
@@ -105,9 +93,7 @@ const currentPage = computed(() => {
   const routeMap: Record<string, string> = {
     '/dashboard': '首页',
     '/settings': '设置',
-    '/agents': '智能工程师',
     '/testing': '智能测试',
-    '/sales': '智能销售',
     '/orchestration': 'Agent编排',
     '/chat': '智能聊天'
   }

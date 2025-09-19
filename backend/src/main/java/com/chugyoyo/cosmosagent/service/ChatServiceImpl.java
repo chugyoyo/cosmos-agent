@@ -3,14 +3,18 @@ package com.chugyoyo.cosmosagent.service;
 import com.chugyoyo.cosmosagent.dto.ChatRequest;
 import com.chugyoyo.cosmosagent.dto.ChatMessageDTO;
 import com.chugyoyo.cosmosagent.dto.ChatSessionDTO;
-import com.chugyoyo.cosmosagent.dto.AgentDTO;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -19,8 +23,10 @@ public class ChatServiceImpl implements ChatService {
     
     private final ChatSessionService chatSessionService;
     private final ChatMessageService chatMessageService;
-    private final AgentService agentService;
-    
+    private final ZhipuaiService zhipuaiService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AgentOrchestrationService agentOrchestrationService;
+
     @Override
     @Transactional
     public ChatSessionDTO createOrGetSession(Long agentId, String sessionName) {
@@ -39,44 +45,6 @@ public class ChatServiceImpl implements ChatService {
     }
     
     @Override
-    @Transactional
-    public ChatMessageDTO sendMessage(ChatRequest request) {
-        // 获取或创建会话
-        ChatSessionDTO session;
-        if (request.getSessionId() != null) {
-            session = chatSessionService.getSessionById(request.getSessionId());
-            if (session == null) {
-                throw new RuntimeException("会话不存在");
-            }
-        } else {
-            session = createOrGetSession(request.getAgentId(), "默认会话 " + LocalDateTime.now());
-        }
-        
-        // 保存用户消息
-        ChatMessageDTO userMessage = new ChatMessageDTO();
-        userMessage.setSessionId(session.getId());
-        userMessage.setRole("user");
-        userMessage.setContent(request.getMessage());
-        chatMessageService.createMessage(userMessage);
-        
-        // 获取Agent信息
-        AgentDTO agent = agentService.getAgentById(request.getAgentId());
-        if (agent == null) {
-            throw new RuntimeException("Agent不存在");
-        }
-        
-        // 生成AI回复（这里暂时使用简单的回复逻辑）
-        String aiResponse = generateAIResponse(request.getMessage(), agent);
-        
-        // 保存AI回复
-        ChatMessageDTO aiMessage = new ChatMessageDTO();
-        aiMessage.setSessionId(session.getId());
-        aiMessage.setRole("assistant");
-        aiMessage.setContent(aiResponse);
-        return chatMessageService.createMessage(aiMessage);
-    }
-    
-    @Override
     public ChatSessionDTO getDefaultSessionByAgentId(Long agentId) {
         List<ChatSessionDTO> sessions = chatSessionService.getLatestSessionsByAgentId(agentId, 1);
         return sessions.isEmpty() ? null : sessions.get(0);
@@ -87,28 +55,72 @@ public class ChatServiceImpl implements ChatService {
         return chatSessionService.getSessionsByAgentId(agentId);
     }
     
-    private String generateAIResponse(String userMessage, AgentDTO agent) {
-        // 这里是一个简单的AI回复逻辑，实际应用中应该调用真正的AI服务
-        String response;
-        
-        if (userMessage.contains("你好") || userMessage.contains("hello")) {
-            response = "你好！我是" + agent.getName() + "，很高兴为您服务！我可以帮助您回答问题、处理任务等。请问有什么可以帮助您的吗？";
-        } else if (userMessage.contains("帮助") || userMessage.contains("help")) {
-            response = "我可以为您提供以下帮助：\n" +
-                       "1. 回答您的问题\n" +
-                       "2. 处理文本任务\n" +
-                       "3. 数据分析\n" +
-                       "4. 生成报告\n" +
-                       "请告诉我您具体需要什么帮助？";
-        } else if (userMessage.contains("再见") || userMessage.contains("bye")) {
-            response = "再见！感谢您的使用，如果还有其他问题，随时可以找我。祝您生活愉快！";
-        } else {
-            response = "感谢您的问题：" + userMessage + "\n\n" +
-                       "作为" + agent.getName() + "，我正在处理您的请求。这是一个示例回复。\n\n" +
-                       "在实际应用中，这里会连接到真正的AI服务（如OpenAI、智谱AI等）来生成智能回复。\n\n" +
-                       "请问还有其他可以帮助您的吗？";
+    @Override
+    @Transactional
+    public Flux<String> sendMessageStream(ChatRequest request) {
+        try {
+            // 获取或创建会话
+            ChatSessionDTO session;
+            if (request.getSessionId() != null) {
+                session = chatSessionService.getSessionById(request.getSessionId());
+                if (session == null) {
+                    return Flux.error(new RuntimeException("会话不存在"));
+                }
+            } else {
+                session = createOrGetSession(request.getAgentId(), "默认会话 " + LocalDateTime.now());
+            }
+            
+            // 保存用户消息
+            ChatMessageDTO userMessage = new ChatMessageDTO();
+            userMessage.setSessionId(session.getId());
+            userMessage.setRole("user");
+            userMessage.setContent(request.getMessage());
+            chatMessageService.createMessage(userMessage);
+
+            // 获取会话历史
+            List<ChatMessageDTO> historyMessages = chatMessageService.getMessagesBySessionId(session.getId());
+            String conversationHistory = buildConversationHistory(historyMessages);
+
+            // 调用智谱AI服务获取流式回复
+            return zhipuaiService.chatWithHistory(request.getMessage(), "glm-4", conversationHistory)
+                    .doOnNext(content -> {
+                        // 当收到完整内容时，保存AI回复
+                        if (content != null && !content.isEmpty() && !content.equals("[DONE]")) {
+                            log.debug("收到AI回复片段: {}", content);
+                        }
+                    })
+                    .doOnComplete(() -> {
+                        log.info("AI回复完成，会话ID: {}", session.getId());
+                    })
+                    .onErrorResume(e -> {
+                        log.error("AI服务调用失败", e);
+                        return Flux.just("抱歉，AI服务暂时不可用，请稍后再试。");
+                    });
+                    
+        } catch (Exception e) {
+            log.error("处理流式消息失败", e);
+            return Flux.error(new RuntimeException("处理消息失败: " + e.getMessage()));
         }
-        
-        return response;
+    }
+    
+    private String buildConversationHistory(List<ChatMessageDTO> messages) {
+        try {
+            List<Map<String, String>> history = new ArrayList<>();
+            
+            // 只保留最近10条消息作为上下文
+            int startIndex = Math.max(0, messages.size() - 10);
+            for (int i = startIndex; i < messages.size(); i++) {
+                ChatMessageDTO msg = messages.get(i);
+                Map<String, String> messageMap = new HashMap<>();
+                messageMap.put("role", msg.getRole());
+                messageMap.put("content", msg.getContent());
+                history.add(messageMap);
+            }
+            
+            return objectMapper.writeValueAsString(history);
+        } catch (Exception e) {
+            log.warn("构建对话历史失败", e);
+            return "[]";
+        }
     }
 }

@@ -24,6 +24,8 @@ public class AgentOrchestrationNodeDTO {
     @NotBlank(message = "节点类型不能为空")
     private String type;
     
+    private Integer status;
+    
     @NotNull(message = "X坐标不能为空")
     private Integer positionX;
     

@@ -25,6 +25,8 @@ public class AgentOrchestrationNode {
     
     private String type;
     
+    private Integer status;
+    
     private Integer positionX;
     
     private Integer positionY;

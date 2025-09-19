@@ -20,6 +20,7 @@ public class AgentOrchestrationController {
 
     private final AgentOrchestrationService orchestrationService;
     private final AgentOrchestrationNodeService nodeService;
+    private final AgentOrchestrationService agentOrchestrationService;
 
     @GetMapping
     public ApiResp<List<AgentOrchestrationDTO>> getAllOrchestrations() {

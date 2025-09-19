@@ -17,22 +17,12 @@ const router = createRouter({
       name: 'Settings',
       component: () => import('@/views/Settings.vue')
     },
-    {
-      path: '/agents',
-      name: 'Agents',
-      component: () => import('@/views/Agents.vue')
-    },
-    {
+        {
       path: '/testing',
       name: 'Testing',
       component: () => import('@/views/Testing.vue')
     },
-    {
-      path: '/sales',
-      name: 'Sales',
-      component: () => import('@/views/Sales.vue')
-    },
-    {
+        {
       path: '/orchestration',
       name: 'Orchestration',
       component: () => import('@/views/Orchestration.vue')

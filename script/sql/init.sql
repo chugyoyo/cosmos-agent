@@ -69,12 +69,14 @@ CREATE TABLE agent_orchestration
 );
 
 -- Agent编排节点表
+drop table if exists agent_orchestration_node;
 CREATE TABLE agent_orchestration_node
 (
     id               BIGSERIAL PRIMARY KEY,
     orchestration_id BIGINT       NOT NULL,
     name             VARCHAR(255) NOT NULL,
     type             VARCHAR(100) NOT NULL,
+    status           INTEGER      DEFAULT 1,
     position_x       INTEGER      NOT NULL,
     position_y       INTEGER      NOT NULL,
     config           TEXT,

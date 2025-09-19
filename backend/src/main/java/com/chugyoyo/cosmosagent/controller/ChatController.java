@@ -4,15 +4,15 @@ import com.chugyoyo.cosmosagent.common.ApiResp;
 import com.chugyoyo.cosmosagent.dto.ChatRequest;
 import com.chugyoyo.cosmosagent.dto.ChatSessionDTO;
 import com.chugyoyo.cosmosagent.dto.ChatMessageDTO;
-import com.chugyoyo.cosmosagent.dto.AgentDTO;
 import com.chugyoyo.cosmosagent.service.ChatService;
 import com.chugyoyo.cosmosagent.service.ChatSessionService;
 import com.chugyoyo.cosmosagent.service.ChatMessageService;
-import com.chugyoyo.cosmosagent.service.AgentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import reactor.core.publisher.Flux;
 import java.util.List;
 
 @RestController
@@ -24,14 +24,6 @@ public class ChatController {
     private final ChatService chatService;
     private final ChatSessionService chatSessionService;
     private final ChatMessageService chatMessageService;
-    private final AgentService agentService;
-    
-    @GetMapping("/agents")
-    public ApiResp<List<AgentDTO>> getAvailableAgents() {
-        // 只返回已部署的Agent
-        List<AgentDTO> deployedAgents = agentService.getDeployedAgents();
-        return ApiResp.success(deployedAgents);
-    }
     
     @GetMapping("/sessions/{agentId}")
     public ApiResp<List<ChatSessionDTO>> getSessionsByAgent(@PathVariable Long agentId) {
@@ -51,10 +43,9 @@ public class ChatController {
         return ApiResp.success(messages);
     }
     
-    @PostMapping("/send")
-    public ApiResp<ChatMessageDTO> sendMessage(@Valid @RequestBody ChatRequest request) {
-        ChatMessageDTO response = chatService.sendMessage(request);
-        return ApiResp.success(response);
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> sendMessageStream(@Valid @RequestBody ChatRequest request) {
+        return chatService.sendMessageStream(request);
     }
     
     @GetMapping("/default-session/{agentId}")

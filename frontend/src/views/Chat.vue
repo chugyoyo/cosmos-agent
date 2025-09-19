@@ -20,6 +20,7 @@
             <div class="agent-option">
               <span class="agent-name">{{ agent.name }}</span>
               <span class="agent-type">{{ agent.type }}</span>
+              <span class="agent-orchestration">来自: {{ agent.orchestrationName }}</span>
             </div>
           </el-option>
         </el-select>
@@ -224,7 +225,7 @@ const currentSession = computed(() =>
 // Agent相关方法
 const loadAgents = async () => {
   try {
-    const response = await chatApi.getAgents()
+    const response = await chatApi.getOrchestrationAgents()
     if (response.data && response.data.code === 200) {
       agents.value = response.data.data || []
       
@@ -329,32 +330,61 @@ const sendMessage = async () => {
   await nextTick()
   scrollToBottom()
 
-  // 发送消息到AI
+  // 发送消息到AI - 使用流式响应
   isLoading.value = true
   try {
-    const response = await chatApi.sendMessage({
+    const aiMessage = {
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: '',
+      createdAt: new Date()
+    }
+    messages.value.push(aiMessage)
+    
+    // 获取流式响应
+    const response = await chatApi.sendMessageStream({
       agentId: selectedAgentId.value,
       message: question,
       sessionId: selectedSessionId.value
     })
 
-    if (response.data && response.data.code === 200) {
-      const aiMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: response.data.data.content,
-        createdAt: new Date()
-      }
-      messages.value.push(aiMessage)
-    } else {
-      throw new Error('API响应错误')
+    if (!response.ok) {
+      throw new Error('网络请求失败')
     }
 
-    await nextTick()
-    scrollToBottom()
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      const chunk = decoder.decode(value)
+      const lines = chunk.split('\n')
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6)
+          if (data === '[DONE]') {
+            return
+          }
+          
+          if (data.trim()) {
+            // 更新AI回复内容
+            aiMessage.content += data
+            await nextTick()
+            scrollToBottom()
+          }
+        }
+      }
+    }
   } catch (error) {
     console.error('发送消息失败:', error)
     ElMessage.error('发送消息失败，请重试')
+    // 移除失败的AI消息
+    if (messages.value.length > 0 && messages.value[messages.value.length - 1].role === 'assistant') {
+      messages.value.pop()
+    }
   } finally {
     isLoading.value = false
   }
