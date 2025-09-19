@@ -1,0 +1,59 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'PingFang SC', 'Roboto', sans-serif;
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+#app {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.page-container {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.page-header {
+  margin-bottom: 24px;
+  
+  h2 {
+    color: #1677ff;
+    margin-bottom: 8px;
+  }
+  
+  .description {
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+.status-tag {
+  &.status-created {
+    background: #e6f7ff;
+    color: #1677ff;
+  }
+  
+  &.status-deployed {
+    background: #f6ffed;
+    color: #52c41a;
+  }
+  
+  &.status-stopped {
+    background: #fff2e8;
+    color: #fa8c16;
+  }
+  
+  &.status-error {
+    background: #fff1f0;
+    color: #ff4d4f;
+  }
+}
