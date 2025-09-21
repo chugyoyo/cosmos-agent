@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chugyoyo.cosmosagent.entity.Agent;
 import com.chugyoyo.cosmosagent.mapper.AgentMapper;
 import com.chugyoyo.cosmosagent.dto.AgentDTO;
+import com.chugyoyo.cosmosagent.service.AgentLinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements AgentService {
     
     private final AgentMapper agentMapper;
+    private final AgentLinkService agentLinkService;
     
     @Override
     public List<AgentDTO> getAllAgents() {
@@ -63,6 +65,9 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
     @Override
     @Transactional
     public void deleteAgent(Long id) {
+        // 删除相关的所有连线
+        agentLinkService.deleteLinksByAgentId(id);
+        // 删除代理
         agentMapper.deleteById(id);
     }
     

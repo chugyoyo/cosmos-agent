@@ -60,12 +60,67 @@
           <div class="form-group">
             <label>节点类型:</label>
             <select v-model="editingNode.type" class="form-control">
+              <option value="llm">LLM节点</option>
               <option value="input">输入节点</option>
               <option value="process">处理节点</option>
               <option value="output">输出节点</option>
               <option value="condition">条件节点</option>
             </select>
           </div>
+          
+          <!-- LLM节点特有配置 -->
+          <div v-if="editingNode.type === 'llm'" class="llm-config">
+            <div class="form-group">
+              <label>模型选择:</label>
+              <select v-model="editingNode.llmConfig.model" class="form-control">
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="gpt-4">GPT-4</option>
+                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                <option value="claude-3-opus">Claude 3 Opus</option>
+                <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                <option value="claude-3-haiku">Claude 3 Haiku</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>系统提示词 (System Prompt):</label>
+              <textarea v-model="editingNode.llmConfig.systemPrompt" class="form-control" rows="4"
+                        placeholder="设置系统角色和指示..."></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label>用户提示词 (User Prompt):</label>
+              <textarea v-model="editingNode.llmConfig.userPrompt" class="form-control" rows="4"
+                        placeholder="用户输入的提示词模板..."></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label>温度 (Temperature):</label>
+              <input type="range" v-model="editingNode.llmConfig.temperature" 
+                     min="0" max="2" step="0.1" class="form-range">
+              <div class="temperature-value">{{ editingNode.llmConfig.temperature }}</div>
+            </div>
+            
+            <div class="form-group">
+              <label>最大令牌数 (Max Tokens):</label>
+              <input type="number" v-model="editingNode.llmConfig.maxTokens" 
+                     class="form-control" min="1" max="8000">
+            </div>
+            
+            <div class="form-group">
+              <label>输入变量:</label>
+              <div class="input-variables">
+                <div v-for="(variable, index) in editingNode.llmConfig.inputVariables" 
+                     :key="index" class="variable-item">
+                  <input v-model="variable.name" placeholder="变量名" class="form-control variable-name">
+                  <input v-model="variable.defaultValue" placeholder="默认值" class="form-control variable-value">
+                  <button @click="removeInputVariable(index)" class="btn btn-sm btn-danger">删除</button>
+                </div>
+                <button @click="addInputVariable" class="btn btn-sm btn-secondary">添加变量</button>
+              </div>
+            </div>
+          </div>
+          
           <div class="form-group">
             <label>YAML 配置:</label>
             <textarea v-model="editingNode.yamlConfig" class="form-control yaml-editor" rows="10"
@@ -210,7 +265,22 @@ export default {
       graphLinks: [],
       selectedNode: null,
       selectedLink: null,
-      editingNode: {},
+      editingNode: {
+        name: '',
+        type: 'llm',
+        x: 0,
+        y: 0,
+        yamlConfig: '',
+        config: {},
+        llmConfig: {
+          model: 'gpt-3.5-turbo',
+          systemPrompt: '',
+          userPrompt: '',
+          temperature: 0.7,
+          maxTokens: 1000,
+          inputVariables: []
+        }
+      },
       editingLink: {},
       showNodeModal: false,
       showLinkModal: false,
@@ -294,8 +364,18 @@ export default {
           config: node.config ? JSON.parse(node.config) : {}
         }));
 
-        // 加载连线数据（这里需要根据实际API调整）
-        const links = []; // 暂时为空，后续可以从后端获取
+        // 加载连线数据
+        const linksResponse = await agentApi.getLinks(agentId);
+        const links = linksResponse.data.data.map(link => ({
+          id: link.id,
+          source: link.sourceNodeId,
+          target: link.targetNodeId,
+          type: link.linkType,
+          name: link.name || link.linkType,
+          description: link.description || '',
+          condition: link.condition || '',
+          agentId: link.agentId
+        }));
 
         this.graphNodes = nodes;
         this.graphLinks = links;
@@ -311,7 +391,8 @@ export default {
         input: '#4CAF50',
         process: '#2196F3',
         output: '#FF9800',
-        condition: '#9C27B0'
+        condition: '#9C27B0',
+        llm: '#673AB7'
       };
       return colors[type] || '#607D8B';
     },
@@ -762,12 +843,20 @@ export default {
 
     addNode() {
       this.editingNode = {
-        name: `节点${this.graphNodes.length + 1}`,
-        type: 'process',
+        name: `LLM节点${this.graphNodes.length + 1}`,
+        type: 'llm',
         x: 400 + Math.random() * 200 - 100,
         y: 300 + Math.random() * 200 - 100,
         yamlConfig: '',
         config: {},
+        llmConfig: {
+          model: 'gpt-3.5-turbo',
+          systemPrompt: '',
+          userPrompt: '',
+          temperature: 0.7,
+          maxTokens: 1000,
+          inputVariables: []
+        },
         isFixed: false,
         agentId: this.currentAgent?.id
       };
@@ -775,8 +864,35 @@ export default {
       this.showNodeModal = true;
     },
 
+    // LLM配置相关方法
+    addInputVariable() {
+      if (!this.editingNode.llmConfig.inputVariables) {
+        this.editingNode.llmConfig.inputVariables = [];
+      }
+      this.editingNode.llmConfig.inputVariables.push({
+        name: '',
+        defaultValue: ''
+      });
+    },
+
+    removeInputVariable(index) {
+      if (this.editingNode.llmConfig.inputVariables) {
+        this.editingNode.llmConfig.inputVariables.splice(index, 1);
+      }
+    },
+
     editNode(node) {
-      this.editingNode = {...node};
+      this.editingNode = {
+        ...node,
+        llmConfig: node.llmConfig || {
+          model: 'gpt-3.5-turbo',
+          systemPrompt: '',
+          userPrompt: '',
+          temperature: 0.7,
+          maxTokens: 1000,
+          inputVariables: []
+        }
+      };
       this.selectedNode = node;
       this.showNodeModal = true;
     },
@@ -801,7 +917,10 @@ export default {
           positionX: Math.round(this.editingNode.x || 0),
           positionY: Math.round(this.editingNode.y || 0),
           yamlConfig: this.editingNode.yamlConfig || '',
-          config: JSON.stringify(this.editingNode.config || {}),
+          config: JSON.stringify({
+            ...this.editingNode.config,
+            llmConfig: this.editingNode.llmConfig
+          }),
           isFixed: this.editingNode.isFixed || false
         };
 
@@ -935,9 +1054,9 @@ export default {
 
       try {
         const linkData = {
-          source: this.editingLink.source,
-          target: this.editingLink.target,
-          type: this.editingLink.type,
+          sourceNodeId: this.editingLink.source,
+          targetNodeId: this.editingLink.target,
+          linkType: this.editingLink.type,
           name: this.editingLink.name,
           description: this.editingLink.description || '',
           condition: this.editingLink.condition || '',
@@ -947,19 +1066,36 @@ export default {
         if (this.selectedLink) {
           // 编辑现有连线
           linkData.id = this.selectedLink.id;
-          await agentApi.saveUpdateLink(linkData);
+          const response = await agentApi.saveUpdateLink(linkData);
           
           // 更新本地数据
+          const updatedLink = response.data.data;
           const linkIndex = this.graphLinks.findIndex(l => l.id === this.selectedLink.id);
           if (linkIndex !== -1) {
-            this.graphLinks[linkIndex] = {...this.editingLink, id: this.selectedLink.id};
+            this.graphLinks[linkIndex] = {
+              id: updatedLink.id,
+              source: updatedLink.sourceNodeId,
+              target: updatedLink.targetNodeId,
+              type: updatedLink.linkType,
+              name: updatedLink.name || updatedLink.linkType,
+              description: updatedLink.description || '',
+              condition: updatedLink.condition || '',
+              agentId: updatedLink.agentId
+            };
           }
         } else {
           // 创建新连线
           const response = await agentApi.saveUpdateLink(linkData);
+          const newLinkData = response.data.data;
           const newLink = {
-            ...this.editingLink,
-            id: response.data || Date.now().toString()
+            id: newLinkData.id,
+            source: newLinkData.sourceNodeId,
+            target: newLinkData.targetNodeId,
+            type: newLinkData.linkType,
+            name: newLinkData.name || newLinkData.linkType,
+            description: newLinkData.description || '',
+            condition: newLinkData.condition || '',
+            agentId: newLinkData.agentId
           };
           this.graphLinks.push(newLink);
         }
@@ -968,18 +1104,24 @@ export default {
         this.initGraph();
       } catch (error) {
         console.error('保存连线失败:', error);
-        alert('保存连线失败');
+        alert('保存连线失败: ' + (error.response?.data?.message || error.message));
       }
     },
 
     // 删除连线
-    deleteLink() {
+    async deleteLink() {
       if (!this.selectedLink) return;
 
       if (confirm('确定要删除这条连线吗？')) {
-        this.graphLinks = this.graphLinks.filter(l => l.id !== this.selectedLink.id);
-        this.closeLinkModal();
-        this.initGraph(); // 重新渲染图表
+        try {
+          await agentApi.deleteLink(this.selectedLink.id);
+          this.graphLinks = this.graphLinks.filter(l => l.id !== this.selectedLink.id);
+          this.closeLinkModal();
+          this.initGraph(); // 重新渲染图表
+        } catch (error) {
+          console.error('删除连线失败:', error);
+          alert('删除连线失败: ' + (error.response?.data?.message || error.message));
+        }
       }
     },
 
@@ -1370,5 +1512,80 @@ export default {
       fill-opacity: 0.3 !important;
     }
   }
+}
+
+/* LLM配置样式 */
+.llm-config {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #e9ecef;
+}
+
+.llm-config .form-group {
+  margin-bottom: 16px;
+}
+
+.llm-config .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.temperature-value {
+  text-align: center;
+  font-weight: 600;
+  color: #673AB7;
+  margin-top: 8px;
+}
+
+.form-range {
+  width: 100%;
+  height: 6px;
+  background: #ddd;
+  border-radius: 3px;
+  outline: none;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #673AB7;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.input-variables {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  background: white;
+}
+
+.variable-item {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.variable-item:last-child {
+  margin-bottom: 0;
+}
+
+.variable-name {
+  flex: 1;
+  min-width: 120px;
+}
+
+.variable-value {
+  flex: 1;
+  min-width: 120px;
+}
+
+.variable-item .btn {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 12px;
 }
 </style>

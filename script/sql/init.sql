@@ -60,6 +60,31 @@ CREATE INDEX idx_agent_status ON agent (status);
 CREATE INDEX idx_agent_node_agent_id ON agent_node (agent_id);
 CREATE INDEX idx_agent_node_type ON agent_node (type);
 
+-- 创建 Agent Link 表
+CREATE TABLE agent_link
+(
+    id             BIGSERIAL PRIMARY KEY,
+    agent_id       BIGINT      NOT NULL,
+    source_node_id BIGINT      NOT NULL,
+    target_node_id BIGINT      NOT NULL,
+    link_type      VARCHAR(50) NOT NULL,
+    name           VARCHAR(100) DEFAULT NULL,
+    description    TEXT,
+    condition      VARCHAR(200) DEFAULT NULL,
+    sort_order     INTEGER      DEFAULT 0,
+    status         INTEGER      DEFAULT 1,
+    config         JSON         DEFAULT NULL,
+    created_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX idx_agent_link_agent_id ON agent_link (agent_id);
+CREATE INDEX idx_agent_link_source_node_id ON agent_link (source_node_id);
+CREATE INDEX idx_agent_link_target_node_id ON agent_link (target_node_id);
+CREATE INDEX idx_agent_link_link_type ON agent_link (link_type);
+CREATE INDEX idx_agent_link_status ON agent_link (status);
+
 -- 聊天会话表
 CREATE TABLE chat_session
 (

@@ -6,6 +6,7 @@ import com.chugyoyo.cosmosagent.dto.AgentLinkDTO;
 import com.chugyoyo.cosmosagent.dto.AgentNodeDTO;
 import com.chugyoyo.cosmosagent.service.AgentService;
 import com.chugyoyo.cosmosagent.service.AgentNodeService;
+import com.chugyoyo.cosmosagent.service.AgentLinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ public class AgentController {
 
     private final AgentService agentService;
     private final AgentNodeService nodeService;
+    private final AgentLinkService linkService;
 
     @GetMapping("/getAllAgents")
     public ApiResp<List<AgentDTO>> getAllAgents() {
@@ -76,10 +78,68 @@ public class AgentController {
         return ApiResp.success();
     }
 
-    // saveUpdateLink
+    // ===== Link 相关 API =====
+    
+    @GetMapping("/getLinksByAgentId")
+    public ApiResp<List<AgentLinkDTO>> getLinksByAgentId(@RequestParam Long id) {
+        List<AgentLinkDTO> links = linkService.getLinksByAgentId(id);
+        return ApiResp.success(links);
+    }
+    
+    @GetMapping("/links/{id}")
+    public ApiResp<AgentLinkDTO> getLinkById(@PathVariable Long id) {
+        AgentLinkDTO link = linkService.getLinkById(id);
+        return link != null ? ApiResp.success(link) : ApiResp.fail("连线不存在");
+    }
+    
     @PostMapping("/saveUpdateLink")
-    public ApiResp<Void> saveUpdateLink(@Valid @RequestBody AgentLinkDTO dto) {
-        nodeService.saveUpdateLink(dto);
+    public ApiResp<AgentLinkDTO> saveUpdateLink(@Valid @RequestBody AgentLinkDTO dto) {
+        if (dto.getId() != null) {
+            // 更新现有连线
+            AgentLinkDTO updated = linkService.updateLink(dto.getId(), dto);
+            return ApiResp.success(updated);
+        } else {
+            // 创建新连线
+            AgentLinkDTO created = linkService.createLink(dto);
+            return ApiResp.success(created);
+        }
+    }
+    
+    @PutMapping("/links/{id}")
+    public ApiResp<AgentLinkDTO> updateLink(@PathVariable Long id, @Valid @RequestBody AgentLinkDTO dto) {
+        AgentLinkDTO updated = linkService.updateLink(id, dto);
+        return ApiResp.success(updated);
+    }
+    
+    @DeleteMapping("/links/{id}")
+    public ApiResp<Void> deleteLink(@PathVariable Long id) {
+        linkService.deleteLink(id);
         return ApiResp.success();
+    }
+    
+    @GetMapping("/nodes/{nodeId}/sourceLinks")
+    public ApiResp<List<AgentLinkDTO>> getLinksBySourceNodeId(@PathVariable Long nodeId) {
+        List<AgentLinkDTO> links = linkService.getLinksBySourceNodeId(nodeId);
+        return ApiResp.success(links);
+    }
+    
+    @GetMapping("/nodes/{nodeId}/targetLinks")
+    public ApiResp<List<AgentLinkDTO>> getLinksByTargetNodeId(@PathVariable Long nodeId) {
+        List<AgentLinkDTO> links = linkService.getLinksByTargetNodeId(nodeId);
+        return ApiResp.success(links);
+    }
+    
+    @GetMapping("/nodes/{nodeId}/allLinks")
+    public ApiResp<List<AgentLinkDTO>> getLinksByNodeId(@PathVariable Long nodeId) {
+        List<AgentLinkDTO> links = linkService.getLinksByNodeId(nodeId);
+        return ApiResp.success(links);
+    }
+    
+    @GetMapping("/checkLinkExists")
+    public ApiResp<Boolean> checkLinkExists(@RequestParam Long agentId, 
+                                           @RequestParam Long sourceNodeId, 
+                                           @RequestParam Long targetNodeId) {
+        boolean exists = linkService.existsLinkBetweenNodes(agentId, sourceNodeId, targetNodeId);
+        return ApiResp.success(exists);
     }
 }

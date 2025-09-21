@@ -53,13 +53,20 @@ export const agentApi = {
   deleteNode: (nodeId: number) => api.delete<ApiResponse<void>>('/agents/deleteNode', {
     params: { nodeId }
   }),
-  saveUpdateLink: (link: any) => api.post<ApiResponse<any>>('/agents/saveUpdateLink', {
-    params: { agentId: link.agentId },
-    data: link
+  getLinks: (agentId: number) => api.get<ApiResponse<any[]>>('/agents/getLinksByAgentId', {
+    params: { id: agentId }
   }),
-  deleteLink: (linkId: number) => api.delete<ApiResponse<void>>('/agents/deleteLink', {
-    params: { linkId }
-  })
+  saveUpdateLink: (link: any) => api.post<ApiResponse<any>>('/agents/saveUpdateLink', link),
+  deleteLink: (linkId: number) => api.delete<ApiResponse<void>>(`/agents/links/${linkId}`),
+  getLinkById: (linkId: number) => api.get<ApiResponse<any>>(`/agents/links/${linkId}`),
+  updateLink: (linkId: number, link: any) => api.put<ApiResponse<any>>(`/agents/links/${linkId}`, link),
+  getLinksBySourceNode: (nodeId: number) => api.get<ApiResponse<any[]>>(`/agents/nodes/${nodeId}/sourceLinks`),
+  getLinksByTargetNode: (nodeId: number) => api.get<ApiResponse<any[]>>(`/agents/nodes/${nodeId}/targetLinks`),
+  getLinksByNode: (nodeId: number) => api.get<ApiResponse<any[]>>(`/agents/nodes/${nodeId}/allLinks`),
+  checkLinkExists: (agentId: number, sourceNodeId: number, targetNodeId: number) => 
+    api.get<ApiResponse<boolean>>('/agents/checkLinkExists', {
+      params: { agentId, sourceNodeId, targetNodeId }
+    })
 }
 
 export const chatApi = {

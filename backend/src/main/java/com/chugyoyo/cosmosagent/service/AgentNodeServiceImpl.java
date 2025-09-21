@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode> implements AgentNodeService {
     
     private final AgentNodeMapper agentNodeMapper;
+    private final AgentLinkService agentLinkService;
     
     @Override
     public List<AgentNodeDTO> getNodesByAgentId(Long agentId) {
@@ -46,6 +47,9 @@ public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode
     @Override
     @Transactional
     public void deleteNode(Long id) {
+        // 删除相关的所有连线
+        agentLinkService.deleteLinksByNodeId(id);
+        // 删除节点
         agentNodeMapper.deleteById(id);
     }
     
@@ -65,7 +69,8 @@ public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode
 
     @Override
     public void saveUpdateLink(AgentLinkDTO dto) {
-        // TODo 数据库
+        // 这个方法已经迁移到AgentLinkService中，这里保留是为了兼容性
+        // 建议调用AgentLinkService的相应方法
     }
 
     private AgentNodeDTO convertToDTO(AgentNode entity) {
