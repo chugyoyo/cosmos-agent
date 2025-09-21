@@ -1054,8 +1054,8 @@ export default {
 
       try {
         const linkData = {
-          sourceNodeId: this.editingLink.source,
-          targetNodeId: this.editingLink.target,
+          sourceNodeId: this.editingLink.source.id,
+          targetNodeId: this.editingLink.target.id,
           linkType: this.editingLink.type,
           name: this.editingLink.name,
           description: this.editingLink.description || '',
