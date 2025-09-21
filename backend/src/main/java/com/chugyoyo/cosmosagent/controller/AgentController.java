@@ -21,7 +21,7 @@ public class AgentController {
     private final AgentService agentService;
     private final AgentNodeService nodeService;
 
-    @GetMapping
+    @GetMapping("/getAllAgents")
     public ApiResp<List<AgentDTO>> getAllAgents() {
         return ApiResp.success(agentService.getAllAgents());
     }

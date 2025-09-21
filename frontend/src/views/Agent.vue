@@ -27,6 +27,7 @@
           <div class="workspace-header">
             <h3>{{ currentAgent.name }}</h3>
             <div class="workspace-actions">
+              <button @click="testLangChainStream" class="btn btn-sm btn-warning">测试 LangChain Stream</button>
               <button @click="addNode" class="btn btn-sm btn-primary">添加节点</button>
               <button @click="startLinkCreation" class="btn btn-sm btn-info">添加连线</button>
               <button @click="clearWorkspace" class="btn btn-sm btn-secondary">清空</button>
@@ -941,6 +942,47 @@ export default {
         error: '#f5222d'
       };
       return colors[type] || '#666';
+    },
+
+    // 测试 LangChain Stream
+    async testLangChainStream() {
+      const testMessage = '你好，这是一个测试消息';
+      try {
+        const response = await fetch('/api/chat/test-langchain-stream?message=' + encodeURIComponent(testMessage), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let result = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.trim()) {
+              result += line + '\n';
+              console.log('LangChain Stream 响应:', line);
+            }
+          }
+        }
+
+        alert('LangChain Stream 测试完成！\n\n响应内容:\n' + result);
+      } catch (error) {
+        console.error('LangChain Stream 测试失败:', error);
+        alert('LangChain Stream 测试失败: ' + error.message);
+      }
     }
   }
 };
@@ -1281,6 +1323,15 @@ export default {
   
   &:hover {
     background: #138496;
+  }
+}
+
+.btn-warning {
+  background: #ffc107;
+  color: #212529;
+  
+  &:hover {
+    background: #e0a800;
   }
 }
 

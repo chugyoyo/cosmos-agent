@@ -64,7 +64,7 @@ export const agentOrchestrationApi = {
 
 export const chatApi = {
   getChatAgents: () => api.get<ApiResponse<any[]>>('/chat/agents'),
-  getAgents: () => api.get<ApiResponse<any[]>>('/agents'),
+  getAgents: () => api.get<ApiResponse<any[]>>('/agents/getAllAgents'),
   getSessions: (agentId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${agentId}`),
   createSession: (session: any) => api.post<ApiResponse<any>>('/chat/sessions', session),
   getSessionMessages: (sessionId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${sessionId}/messages`),

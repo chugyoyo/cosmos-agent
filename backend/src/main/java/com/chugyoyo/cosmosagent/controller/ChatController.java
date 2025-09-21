@@ -7,7 +7,9 @@ import com.chugyoyo.cosmosagent.dto.ChatMessageDTO;
 import com.chugyoyo.cosmosagent.service.ChatService;
 import com.chugyoyo.cosmosagent.service.ChatSessionService;
 import com.chugyoyo.cosmosagent.service.ChatMessageService;
+import com.chugyoyo.cosmosagent.service.ZhipuaiService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,11 +21,13 @@ import java.util.List;
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Slf4j
 public class ChatController {
     
     private final ChatService chatService;
     private final ChatSessionService chatSessionService;
     private final ChatMessageService chatMessageService;
+    private final ZhipuaiService zhipuaiService;
     
     @GetMapping("/sessions/{agentId}")
     public ApiResp<List<ChatSessionDTO>> getSessionsByAgent(@PathVariable Long agentId) {
@@ -47,20 +51,7 @@ public class ChatController {
     public Flux<String> sendMessageStream(@Valid @RequestBody ChatRequest request) {
         return chatService.sendMessageStream(request);
     }
-    
-    @GetMapping("/default-session/{agentId}")
-    public ApiResp<ChatSessionDTO> getDefaultSession(@PathVariable Long agentId) {
-        ChatSessionDTO session = chatService.getDefaultSessionByAgentId(agentId);
-        if (session == null) {
-            // 如果没有默认会话，创建一个
-            ChatSessionDTO newSession = new ChatSessionDTO();
-            newSession.setAgentId(agentId);
-            newSession.setName("默认会话");
-            session = chatSessionService.createSession(newSession);
-        }
-        return ApiResp.success(session);
-    }
-    
+
     @DeleteMapping("/sessions/{sessionId}")
     public ApiResp<Void> deleteSession(@PathVariable Long sessionId) {
         chatSessionService.deleteSession(sessionId);

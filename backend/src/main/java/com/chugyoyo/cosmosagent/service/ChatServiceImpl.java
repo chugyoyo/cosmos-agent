@@ -12,9 +12,6 @@ import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +22,6 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageService chatMessageService;
     private final ZhipuaiService zhipuaiService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final AgentService agentService;
 
     @Override
     @Transactional
@@ -77,50 +73,43 @@ public class ChatServiceImpl implements ChatService {
             userMessage.setContent(request.getMessage());
             chatMessageService.createMessage(userMessage);
 
-            // 获取会话历史
-            List<ChatMessageDTO> historyMessages = chatMessageService.getMessagesBySessionId(session.getId());
-            String conversationHistory = buildConversationHistory(historyMessages);
-
-            // 调用智谱AI服务获取流式回复
-            return zhipuaiService.chatWithHistory(request.getMessage(), "glm-4", conversationHistory)
+            // 使用LangChain4j调用智谱AI服务获取流式回复
+            StringBuilder aiResponseBuilder = new StringBuilder();
+            return zhipuaiService.streamChat(request.getMessage())
                     .doOnNext(content -> {
-                        // 当收到完整内容时，保存AI回复
+                        // 累积AI回复内容
                         if (content != null && !content.isEmpty() && !content.equals("[DONE]")) {
+                            aiResponseBuilder.append(content);
                             log.debug("收到AI回复片段: {}", content);
                         }
                     })
                     .doOnComplete(() -> {
-                        log.info("AI回复完成，会话ID: {}", session.getId());
+                        // 流式响应完成，保存完整的AI回复
+                        String fullResponse = aiResponseBuilder.toString();
+                        if (!fullResponse.isEmpty()) {
+                            ChatMessageDTO aiMessage = new ChatMessageDTO();
+                            aiMessage.setSessionId(session.getId());
+                            aiMessage.setRole("assistant");
+                            aiMessage.setContent(fullResponse);
+                            chatMessageService.createMessage(aiMessage);
+                            log.info("AI回复完成并保存，会话ID: {}, 内容长度: {}", session.getId(), fullResponse.length());
+                        }
                     })
                     .onErrorResume(e -> {
                         log.error("AI服务调用失败", e);
-                        return Flux.just("抱歉，AI服务暂时不可用，请稍后再试。");
+                        // 即使出错也保存错误信息
+                        String errorMessage = "抱歉，AI服务暂时不可用，请稍后再试。";
+                        ChatMessageDTO errorMessageDto = new ChatMessageDTO();
+                        errorMessageDto.setSessionId(session.getId());
+                        errorMessageDto.setRole("assistant");
+                        errorMessageDto.setContent(errorMessage);
+                        chatMessageService.createMessage(errorMessageDto);
+                        return Flux.just(errorMessage);
                     });
                     
         } catch (Exception e) {
             log.error("处理流式消息失败", e);
             return Flux.error(new RuntimeException("处理消息失败: " + e.getMessage()));
-        }
-    }
-    
-    private String buildConversationHistory(List<ChatMessageDTO> messages) {
-        try {
-            List<Map<String, String>> history = new ArrayList<>();
-            
-            // 只保留最近10条消息作为上下文
-            int startIndex = Math.max(0, messages.size() - 10);
-            for (int i = startIndex; i < messages.size(); i++) {
-                ChatMessageDTO msg = messages.get(i);
-                Map<String, String> messageMap = new HashMap<>();
-                messageMap.put("role", msg.getRole());
-                messageMap.put("content", msg.getContent());
-                history.add(messageMap);
-            }
-            
-            return objectMapper.writeValueAsString(history);
-        } catch (Exception e) {
-            log.warn("构建对话历史失败", e);
-            return "[]";
         }
     }
 }
