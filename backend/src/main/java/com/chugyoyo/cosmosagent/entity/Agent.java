@@ -23,15 +23,11 @@ public class Agent {
     
     private String description;
     
-    @TableField(typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
-    private String flowData;
-    
     private Integer status;
     
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;
-    
-    @TableField(typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
+
     private String config;
 }

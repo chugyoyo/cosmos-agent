@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AIConfiguration, Agent } from '@/types'
+import type { AIConfiguration } from '@/types'
 import type { ApiResponse } from '@/types/api'
 
 const api = axios.create({
@@ -22,56 +22,60 @@ api.interceptors.response.use(
 )
 
 export const configurationApi = {
-  getAll: () => api.get<ApiResponse<AIConfiguration[]>>('/configurations'),
-  getByProvider: (provider: string) => api.get<ApiResponse<AIConfiguration>>(`/configurations/${provider}`),
-  create: (config: AIConfiguration) => api.post<ApiResponse<AIConfiguration>>('/configurations', config),
-  update: (id: number, config: AIConfiguration) => api.put<ApiResponse<AIConfiguration>>(`/configurations/${id}`, config),
-  delete: (id: number) => api.delete<ApiResponse<void>>(`/configurations/${id}`),
-  testConnection: (provider: string) => api.post<ApiResponse<any>>(`/configurations/${provider}/test`)
-}
-
-export const aiTestApi = {
-  testConnection: (provider: string) => api.post<ApiResponse<any>>(`/ai-test/${provider}/connection`),
-  testChat: (provider: string, message: string) => api.post<ApiResponse<any>>(`/ai-test/${provider}/chat`, { message }),
+  getAll: () => api.get<ApiResponse<AIConfiguration[]>>('/configurations/getAllConfigurations'),
+  getByProvider: (provider: string) => api.get<ApiResponse<AIConfiguration>>('/configurations/getConfigurationByProvider', {
+    params: { provider }
+  }),
+  create: (config: AIConfiguration) => api.post<ApiResponse<AIConfiguration>>('/configurations/createConfiguration', config),
+  saveUpdateConfiguration: (config: AIConfiguration) => api.put<ApiResponse<AIConfiguration>>('/configurations/saveUpdateConfiguration', config),
+  deleteConfiguration: (id: number) => api.delete<ApiResponse<void>>('/configurations/deleteConfiguration', {
+    params: { id }
+  }),
+  testConnection: (provider: string) => api.post<ApiResponse<any>>('/configurations/testConnectionByProvider', {
+    params: { provider }
+  })
 }
 
 export const agentApi = {
-  getAll: () => api.get<ApiResponse<Agent[]>>('/agents'),
-  getByType: (type: string) => api.get<ApiResponse<Agent[]>>(`/agents/type/${type}`),
-  getDeployed: () => api.get<ApiResponse<Agent[]>>('/agents/deployed'),
-  getById: (id: number) => api.get<ApiResponse<Agent>>(`/agents/${id}`),
-  create: (agent: Agent) => api.post<ApiResponse<Agent>>('/agents', agent),
-  update: (id: number, agent: Agent) => api.put<ApiResponse<Agent>>(`/agents/${id}`, agent),
-  delete: (id: number) => api.delete<ApiResponse<void>>(`/agents/${id}`),
-  deploy: (id: number) => api.post<ApiResponse<Agent>>(`/agents/${id}/deploy`),
-  undeploy: (id: number) => api.post<ApiResponse<Agent>>(`/agents/${id}/undeploy`),
-  incrementCallCount: (id: number) => api.post<ApiResponse<Agent>>(`/agents/${id}/call`)
-}
-
-export const agentOrchestrationApi = {
-  getAll: () => api.get<ApiResponse<any[]>>('/agents'),
-  getById: (id: number) => api.get<ApiResponse<any>>(`/agents/${id}`),
-  create: (agent: any) => api.post<ApiResponse<any>>('/agents', agent),
-  update: (id: number, agent: any) => api.put<ApiResponse<any>>(`/agents/${id}`, agent),
-  delete: (id: number) => api.delete<ApiResponse<void>>(`/agents/${id}`),
-  updateFlow: (id: number, flowData: string) => api.put<ApiResponse<any>>(`/agents/${id}/flow`, flowData),
-  getNodes: (agentId: number) => api.get<ApiResponse<any[]>>(`/agents/${agentId}/nodes`),
-  createNode: (agentId: number, node: any) => api.post<ApiResponse<any>>(`/agents/${agentId}/nodes`, node),
-  updateNode: (id: number, node: any) => api.put<ApiResponse<any>>(`/nodes/${id}`, node),
-  updateNodeYaml: (id: number, yamlConfig: string) => api.put<ApiResponse<any>>(`/nodes/${id}/yaml`, yamlConfig),
-  deleteNode: (id: number) => api.delete<ApiResponse<void>>(`/nodes/${id}`)
+  getAll: () => api.get<ApiResponse<any[]>>('/agents/getAllAgents'),
+  getById: (id: number) => api.get<ApiResponse<any>>('/agents/getAgentById', {
+    params: { id }
+  }),
+  create: (agent: any) => api.post<ApiResponse<any>>('/agents/createAgent', agent),
+  saveUpdateAgent: (agent: any) => api.put<ApiResponse<any>>('/agents/saveUpdateAgent', agent),
+  deleteAgent: (id: number) => api.delete<ApiResponse<void>>('/agents/deleteAgent', {
+    params: { id }
+  }),
+  getNodes: (agentId: number) => api.get<ApiResponse<any[]>>('/agents/getNodesByAgentId', {
+    params: { "id" : agentId }
+  }),
+  saveUpdateNode: (node: any) => api.post<ApiResponse<any>>(`/agents/agentId/${node.agentId}/saveUpdateNode`, node),
+  deleteNode: (nodeId: number) => api.delete<ApiResponse<void>>('/agents/deleteNode', {
+    params: { nodeId }
+  }),
+  saveUpdateLink: (link: any) => api.post<ApiResponse<any>>('/agents/saveUpdateLink', {
+    params: { agentId: link.agentId },
+    data: link
+  }),
+  deleteLink: (linkId: number) => api.delete<ApiResponse<void>>('/agents/deleteLink', {
+    params: { linkId }
+  })
 }
 
 export const chatApi = {
-  getChatAgents: () => api.get<ApiResponse<any[]>>('/chat/agents'),
+  getChatAgents: () => api.get<ApiResponse<any[]>>('/chat/getChatAgents'),
   getAgents: () => api.get<ApiResponse<any[]>>('/agents/getAllAgents'),
-  getSessions: (agentId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${agentId}`),
-  createSession: (session: any) => api.post<ApiResponse<any>>('/chat/sessions', session),
-  getSessionMessages: (sessionId: number) => api.get<ApiResponse<any[]>>(`/chat/sessions/${sessionId}/messages`),
-  sendMessage: (request: any) => api.post<ApiResponse<any>>('/chat/send', request),
+  getSessions: (agentId: number) => api.get<ApiResponse<any[]>>('/chat/getSessionsByAgentId', {
+    params: { agentId }
+  }),
+  createSession: (session: any) => api.post<ApiResponse<any>>('/chat/createSession', session),
+  getSessionMessages: (sessionId: number) => api.get<ApiResponse<any[]>>('/chat/getSessionMessages', {
+    params: { sessionId }
+  }),
+  sendMessage: (request: any) => api.post<ApiResponse<any>>('/chat/sendMessage', request),
   sendMessageStream: (request: any) => {
     const token = localStorage.getItem('token')
-    return fetch('/api/chat/stream', {
+    return fetch('/api/chat/sendMessageStream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,6 +84,10 @@ export const chatApi = {
       body: JSON.stringify(request)
     })
   },
-  getDefaultSession: (agentId: number) => api.get<ApiResponse<any>>(`/chat/default-session/${agentId}`),
-  deleteSession: (sessionId: number) => api.delete<ApiResponse<void>>(`/chat/sessions/${sessionId}`)
+  getDefaultSession: (agentId: number) => api.get<ApiResponse<any>>('/chat/getDefaultSession', {
+    params: { agentId }
+  }),
+  deleteSession: (sessionId: number) => api.delete<ApiResponse<void>>('/chat/deleteSession', {
+    params: { sessionId }
+  })
 }

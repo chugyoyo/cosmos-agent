@@ -5,12 +5,8 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            redirect: '/dashboard'
-        },
-        {
-            path: '/dashboard',
-            name: 'Dashboard',
-            component: () => import('@/views/Dashboard.vue')
+            name: 'Home',
+            component: () => import('@/views/Home.vue')
         },
         {
             path: '/settings',
@@ -18,14 +14,32 @@ const router = createRouter({
             component: () => import('@/views/Settings.vue')
         },
         {
+            path: '/configurations/getAllConfigurations',
+            name: 'ConfigurationsList',
+            component: () => import('@/views/Settings.vue'),
+            props: true
+        },
+        {
             path: '/agent',
             name: 'Agent',
             component: () => import('@/views/Agent.vue')
         },
         {
+            path: '/agents/agentId/:id',
+            name: 'AgentDetail',
+            component: () => import('@/views/Agent.vue'),
+            props: true
+        },
+        {
             path: '/chat',
             name: 'Chat',
             component: () => import('@/views/Chat.vue')
+        },
+        {
+            path: '/chat/agentId/:agentId/sessionId/:sessionId',
+            name: 'ChatSession',
+            component: () => import('@/views/Chat.vue'),
+            props: true
         }
     ]
 })

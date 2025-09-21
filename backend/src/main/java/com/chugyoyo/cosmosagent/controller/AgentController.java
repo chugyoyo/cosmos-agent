@@ -2,6 +2,7 @@ package com.chugyoyo.cosmosagent.controller;
 
 import com.chugyoyo.cosmosagent.common.ApiResp;
 import com.chugyoyo.cosmosagent.dto.AgentDTO;
+import com.chugyoyo.cosmosagent.dto.AgentLinkDTO;
 import com.chugyoyo.cosmosagent.dto.AgentNodeDTO;
 import com.chugyoyo.cosmosagent.service.AgentService;
 import com.chugyoyo.cosmosagent.service.AgentNodeService;
@@ -26,64 +27,59 @@ public class AgentController {
         return ApiResp.success(agentService.getAllAgents());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id}/getAgentById")
     public ApiResp<AgentDTO> getAgentById(@PathVariable Long id) {
         AgentDTO agent = agentService.getAgentById(id);
         return agent != null ? ApiResp.success(agent) : ApiResp.fail("代理不存在");
     }
 
-    @PostMapping
+    @PostMapping("/createAgent")
     public ApiResp<AgentDTO> createAgent(@Valid @RequestBody AgentDTO dto) {
         AgentDTO created = agentService.createAgent(dto);
         return ApiResp.success(created);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/updateAgent")
     public ApiResp<AgentDTO> updateAgent(@PathVariable Long id, @Valid @RequestBody AgentDTO dto) {
         AgentDTO updated = agentService.updateAgent(id, dto);
         return ApiResp.success(updated);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}/deleteAgent")
     public ApiResp<Void> deleteAgent(@PathVariable Long id) {
         agentService.deleteAgent(id);
         return ApiResp.success();
     }
 
-    @PutMapping("/{id}/flow")
-    public ApiResp<AgentDTO> updateFlowData(@PathVariable Long id, @RequestBody String flowData) {
-        AgentDTO updated = agentService.updateFlowData(id, flowData);
-        return ApiResp.success(updated);
-    }
-
-    @GetMapping("/{id}/nodes")
-    public ApiResp<List<AgentNodeDTO>> getNodesByAgentId(@PathVariable Long id) {
+    @GetMapping("/getNodesByAgentId")
+    public ApiResp<List<AgentNodeDTO>> getNodesByAgentId(@RequestParam Long id) {
         List<AgentNodeDTO> nodes = nodeService.getNodesByAgentId(id);
         return ApiResp.success(nodes);
     }
 
-    @PostMapping("/{agentId}/nodes")
-    public ApiResp<AgentNodeDTO> createNode(@PathVariable Long agentId, @Valid @RequestBody AgentNodeDTO dto) {
+    @PostMapping("/agentId/{agentId}/saveUpdateNode")
+    public ApiResp<AgentNodeDTO> saveUpdateNode(@PathVariable Long agentId, @Valid @RequestBody AgentNodeDTO dto) {
         dto.setAgentId(agentId);
-        AgentNodeDTO created = nodeService.createNode(dto);
+        AgentNodeDTO created = nodeService.saveUpdateNode(dto);
         return ApiResp.success(created);
     }
 
-    @PutMapping("/nodes/{id}")
-    public ApiResp<AgentNodeDTO> updateNode(@PathVariable Long id, @Valid @RequestBody AgentNodeDTO dto) {
-        AgentNodeDTO updated = nodeService.updateNode(id, dto);
-        return ApiResp.success(updated);
-    }
-
-    @PutMapping("/nodes/{id}/yaml")
+    @PutMapping("/nodes/{id}/updateNodeYaml")
     public ApiResp<AgentNodeDTO> updateNodeYaml(@PathVariable Long id, @RequestBody String yamlConfig) {
         AgentNodeDTO updated = nodeService.updateNodeYaml(id, yamlConfig);
         return ApiResp.success(updated);
     }
 
-    @DeleteMapping("/nodes/{id}")
+    @DeleteMapping("/nodes/{id}/deleteNode")
     public ApiResp<Void> deleteNode(@PathVariable Long id) {
         nodeService.deleteNode(id);
+        return ApiResp.success();
+    }
+
+    // saveUpdateLink
+    @PostMapping("/saveUpdateLink")
+    public ApiResp<Void> saveUpdateLink(@Valid @RequestBody AgentLinkDTO dto) {
+        nodeService.saveUpdateLink(dto);
         return ApiResp.success();
     }
 }

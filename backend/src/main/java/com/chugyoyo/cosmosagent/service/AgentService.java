@@ -14,6 +14,4 @@ public interface AgentService {
     AgentDTO updateAgent(Long id, AgentDTO dto);
     
     void deleteAgent(Long id);
-    
-    AgentDTO updateFlowData(Long id, String flowData);
 }

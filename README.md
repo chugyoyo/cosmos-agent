@@ -82,6 +82,14 @@
 
 ---
 
+## 接口规范
+
+- 接口 URL Mapping 规范：
+  - 避免使用 PUT xxx/{id} 进行更新，使用 PUT /saveUpdateXxx 进行保存更新。例如，是 /saveUpdateAgent/{id}，而不是 /agent/{id}
+  - 避免使用 {xid}/{yid}/.. 路径，而要使用 xid/{xid}/yid/{yid} 路径，这里的 x、y 按具体逻辑。正确示范：POST /agentId/{agentId}/config/{configId}/listChat
+  - 其他接口以此类推，URL 的最后一个单词必须有非常明确的语义。非合规的： /agent/{id}、/config/{id}、/chat/{id} 等是；合规的：/getAgentById?id=xxxx
+---
+
 ## 部署与运行
 
 ```bash

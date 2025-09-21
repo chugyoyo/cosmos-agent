@@ -22,36 +22,36 @@ public class AIConfigurationController {
 
     private final AIConfigurationService configurationService;
 
-    @GetMapping
+    @GetMapping("/getAllConfigurations")
     public ApiResp<List<AIConfigurationDTO>> getAllConfigurations() {
         return ApiResp.success(configurationService.getAllConfigurations());
     }
 
-    @GetMapping("/{provider}")
+    @GetMapping("/{provider}/getConfigurationByProvider")
     public ApiResp<AIConfigurationDTO> getConfigurationByProvider(@PathVariable String provider) {
         AIConfigurationDTO config = configurationService.getConfigurationByProvider(provider);
         return config != null ? ApiResp.success(config) : ApiResp.fail(HttpStatus.NOT_FOUND, "Configuration not found");
     }
 
-    @PostMapping
+    @PostMapping("/createConfiguration")
     public ApiResp<AIConfigurationDTO> createConfiguration(@Valid @RequestBody AIConfigurationDTO dto) {
         AIConfigurationDTO created = configurationService.createConfiguration(dto);
         return ApiResp.success(created);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/updateConfiguration")
     public ApiResp<AIConfigurationDTO> updateConfiguration(@PathVariable Long id, @Valid @RequestBody AIConfigurationDTO dto) {
         AIConfigurationDTO updated = configurationService.updateConfiguration(id, dto);
         return ApiResp.success(updated);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}/deleteConfiguration")
     public ApiResp<Void> deleteConfiguration(@PathVariable Long id) {
         configurationService.deleteConfiguration(id);
         return ApiResp.success();
     }
 
-    @PostMapping("/{provider}/test")
+    @PostMapping("/{provider}/testConnectionByProvider")
     public ApiResp<Map<String, Object>> testConnection(@PathVariable String provider) {
         Map<String, Object> result = configurationService.testConnection(provider);
         return ApiResp.success(result);

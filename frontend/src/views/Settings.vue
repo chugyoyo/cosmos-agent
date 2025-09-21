@@ -119,7 +119,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { configurationApi, aiTestApi } from '@/services/api'
+import { configurationApi } from '@/services/api'
 import { extractData, handleApiError } from '@/utils/apiHelpers'
 import type { AIConfiguration } from '@/types'
 
@@ -166,7 +166,7 @@ const saveConfiguration = async () => {
     await formRef.value.validate()
     
     if (editingConfig.value) {
-      await configurationApi.update(editingConfig.value.id!, configForm)
+      await configurationApi.saveUpdateConfiguration({...configForm, id: editingConfig.value.id!})
       ElMessage.success('配置更新成功')
     } else {
       await configurationApi.create(configForm)
@@ -193,7 +193,7 @@ const deleteConfiguration = async (id: number) => {
       type: 'warning'
     })
     
-    await configurationApi.delete(id)
+    await configurationApi.deleteConfiguration(id)
     ElMessage.success('配置删除成功')
     loadConfigurations()
   } catch (error) {

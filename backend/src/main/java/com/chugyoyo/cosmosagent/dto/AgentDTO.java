@@ -1,5 +1,6 @@
 package com.chugyoyo.cosmosagent.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -20,14 +21,13 @@ public class AgentDTO {
     
     private String description;
     
-    private String flowData;
-    
     private Integer status;
     
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;
-    
+
+    @JsonFormat
     private String config;
     
     private List<AgentNodeDTO> nodes;

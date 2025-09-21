@@ -32,7 +32,7 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         Agent agent = agentMapper.selectById(id);
         return agent != null ? convertToDTO(agent) : null;
     }
-    
+
     @Override
     @Transactional
     public AgentDTO createAgent(AgentDTO dto) {
@@ -66,26 +66,11 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         agentMapper.deleteById(id);
     }
     
-    @Override
-    @Transactional
-    public AgentDTO updateFlowData(Long id, String flowData) {
-        Agent agent = agentMapper.selectById(id);
-        if (agent == null) {
-            throw new RuntimeException("代理不存在");
-        }
-        
-        agent.setFlowData(flowData);
-        agent.setUpdatedAt(LocalDateTime.now());
-        agentMapper.updateById(agent);
-        return convertToDTO(agent);
-    }
-    
     private AgentDTO convertToDTO(Agent entity) {
         AgentDTO dto = new AgentDTO();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
         dto.setDescription(entity.getDescription());
-        dto.setFlowData(entity.getFlowData());
         dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
@@ -97,7 +82,6 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         Agent entity = new Agent();
         entity.setName(dto.getName());
         entity.setDescription(dto.getDescription());
-        entity.setFlowData(dto.getFlowData());
         entity.setStatus(dto.getStatus());
         entity.setConfig(dto.getConfig());
         return entity;

@@ -4,7 +4,6 @@
       <h2>Agent 管理</h2>
       <div class="header-actions">
         <button @click="createNewAgent" class="btn btn-primary">新建代理</button>
-        <button @click="saveAgent" class="btn btn-success" :disabled="!currentAgent">保存</button>
       </div>
     </div>
 
@@ -12,8 +11,8 @@
       <div class="sidebar">
         <h3>代理列表</h3>
         <div class="agent-list">
-          <div v-for="agent in agents" :key="agent.id" 
-               class="agent-item" 
+          <div v-for="agent in agents" :key="agent.id"
+               class="agent-item"
                :class="{ active: currentAgent?.id === agent.id }"
                @click="selectAgent(agent)">
             <div class="agent-name">{{ agent.name }}</div>
@@ -27,20 +26,19 @@
           <div class="workspace-header">
             <h3>{{ currentAgent.name }}</h3>
             <div class="workspace-actions">
-              <button @click="testLangChainStream" class="btn btn-sm btn-warning">测试 LangChain Stream</button>
               <button @click="addNode" class="btn btn-sm btn-primary">添加节点</button>
               <button @click="startLinkCreation" class="btn btn-sm btn-info">添加连线</button>
               <button @click="clearWorkspace" class="btn btn-sm btn-secondary">清空</button>
             </div>
           </div>
-          
+
           <div class="canvas-container">
             <div ref="canvas" class="agent-canvas">
               <!-- D3将在这里动态创建SVG -->
             </div>
           </div>
         </div>
-        
+
         <div v-else class="empty-state">
           <p>请选择或创建一个代理</p>
         </div>
@@ -57,7 +55,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label>节点名称:</label>
-            <input v-model="editingNode.name" class="form-control" />
+            <input v-model="editingNode.name" class="form-control"/>
           </div>
           <div class="form-group">
             <label>节点类型:</label>
@@ -70,13 +68,13 @@
           </div>
           <div class="form-group">
             <label>YAML 配置:</label>
-            <textarea v-model="editingNode.yamlConfig" class="form-control yaml-editor" rows="10" 
+            <textarea v-model="editingNode.yamlConfig" class="form-control yaml-editor" rows="10"
                       placeholder="输入 YAML 配置..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="saveNode" class="btn btn-primary">保存</button>
-          <button @click="deleteNode" class="btn btn-danger">删除</button>
+          <button @click="saveNode(selectedNode)" class="btn btn-primary">保存</button>
+          <button @click="deleteNode(selectedNode)" class="btn btn-danger">删除</button>
           <button @click="closeNodeModal" class="btn btn-secondary">取消</button>
         </div>
       </div>
@@ -92,7 +90,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label>节点名称:</label>
-            <input v-model="editingNode.name" class="form-control" />
+            <input v-model="editingNode.name" class="form-control"/>
           </div>
           <div class="form-group">
             <label>节点类型:</label>
@@ -105,7 +103,7 @@
           </div>
           <div class="form-group">
             <label>YAML 配置:</label>
-            <textarea v-model="editingNode.yamlConfig" class="form-control yaml-editor" rows="10" 
+            <textarea v-model="editingNode.yamlConfig" class="form-control yaml-editor" rows="10"
                       placeholder="输入 YAML 配置..."></textarea>
           </div>
         </div>
@@ -136,17 +134,17 @@
           </div>
           <div class="form-group">
             <label>连线名称:</label>
-            <input v-model="editingLink.name" class="form-control" placeholder="输入连线名称" />
+            <input v-model="editingLink.name" class="form-control" placeholder="输入连线名称"/>
           </div>
           <div class="form-group">
             <label>描述:</label>
-            <textarea v-model="editingLink.description" class="form-control" rows="3" 
+            <textarea v-model="editingLink.description" class="form-control" rows="3"
                       placeholder="输入连线描述"></textarea>
           </div>
           <div class="form-group">
             <label>条件表达式:</label>
-            <input v-model="editingLink.condition" class="form-control" 
-                   placeholder="如: success == true 或 result.code == 200" />
+            <input v-model="editingLink.condition" class="form-control"
+                   placeholder="如: success == true 或 result.code == 200"/>
           </div>
         </div>
         <div class="modal-footer">
@@ -175,11 +173,11 @@
         <div class="modal-body">
           <div class="form-group">
             <label>代理名称:</label>
-            <input v-model="newAgent.name" class="form-control" placeholder="输入代理名称" />
+            <input v-model="newAgent.name" class="form-control" placeholder="输入代理名称"/>
           </div>
           <div class="form-group">
             <label>描述:</label>
-            <textarea v-model="newAgent.description" class="form-control" rows="3" 
+            <textarea v-model="newAgent.description" class="form-control" rows="3"
                       placeholder="输入代理描述"></textarea>
           </div>
         </div>
@@ -194,10 +192,16 @@
 
 <script>
 import * as d3 from 'd3';
-import { agentOrchestrationApi } from '@/services/api';
+import {agentApi} from '@/services/api';
 
 export default {
   name: 'Agent',
+  props: {
+    id: {
+      type: [String, Number],
+      default: null
+    }
+  },
   data() {
     return {
       agents: [],
@@ -220,39 +224,66 @@ export default {
       simulation: null,
       d3Data: null,
       nextNodeId: 1,
-      nextLinkId: 1
     };
   },
   mounted() {
     this.loadAgents();
     window.addEventListener('resize', this.handleResize);
   },
+  watch: {
+    id: {
+      immediate: true,
+      handler(newId) {
+        if (newId) {
+          this.loadAgentById(newId);
+        }
+      }
+    }
+  },
   beforeUnmount() {
     this.destroyGraph();
     window.removeEventListener('resize', this.handleResize);
   },
   methods: {
+    async loadAgentById(agentId) {
+      try {
+        // First load all agents to populate the sidebar
+        await this.loadAgents();
+        
+        // Then find and select the specific agent
+        const agent = this.agents.find(a => a.id == agentId);
+        if (agent) {
+          this.currentAgent = agent;
+          await this.loadAgentNodes(agentId);
+        }
+      } catch (error) {
+        console.error('加载代理失败:', error);
+      }
+    },
+    
     async loadAgents() {
       try {
-        const response = await agentOrchestrationApi.getAll();
+        const response = await agentApi.getAll();
         this.agents = response.data.data;
         console.log("loadAgents done, this.agents", this.agents);
       } catch (error) {
         console.error('加载代理列表失败:', error);
       }
     },
-    
+
     async selectAgent(agent) {
       this.currentAgent = agent;
       console.log("agents", this.agents);
       console.log("selectAgent, agent", agent);
+      // router
+      this.$router.push({ name: 'AgentDetail', params: { id: agent.id } });
       await this.loadAgentNodes(agent.id);
     },
-    
+
     async loadAgentNodes(agentId) {
       try {
         // 加载节点
-        const nodesResponse = await agentOrchestrationApi.getNodes(agentId);
+        const nodesResponse = await agentApi.getNodes(agentId);
         const nodes = nodesResponse.data.data.map(node => ({
           id: node.id,
           name: node.name,
@@ -260,12 +291,12 @@ export default {
           x: node.positionX,
           y: node.positionY,
           yamlConfig: node.yamlConfig || '',
-          config: node.config || {}
+          config: node.config ? JSON.parse(node.config) : {}
         }));
-        
+
         // 加载连线数据（这里需要根据实际API调整）
         const links = []; // 暂时为空，后续可以从后端获取
-        
+
         this.graphNodes = nodes;
         this.graphLinks = links;
         this.initGraph();
@@ -273,7 +304,7 @@ export default {
         console.error('加载节点失败:', error);
       }
     },
-    
+
     // 获取节点颜色
     getNodeColor(type) {
       const colors = {
@@ -284,16 +315,16 @@ export default {
       };
       return colors[type] || '#607D8B';
     },
-    
+
     // 获取节点半径
     getNodeRadius(node) {
       const name = node.name || '';
       const baseRadius = 35;
-      
+
       // 根据文本长度计算所需半径
       const textLength = name.length;
       let radius = baseRadius;
-      
+
       if (textLength <= 4) {
         radius = baseRadius;
       } else if (textLength <= 8) {
@@ -303,30 +334,30 @@ export default {
       } else {
         radius = baseRadius + 25;
       }
-      
+
       const weight = node.weight || 1;
       return radius * Math.sqrt(weight);
     },
-    
+
     // 文本换行函数
     wrapText(text, maxCharsPerLine = 4) {
       if (!text) return [''];
-      
+
       const lines = [];
       let currentLine = '';
-      
+
       for (let i = 0; i < text.length; i++) {
         currentLine += text[i];
-        
+
         if (currentLine.length >= maxCharsPerLine || i === text.length - 1) {
           lines.push(currentLine);
           currentLine = '';
         }
       }
-      
+
       return lines.length > 0 ? lines : [''];
     },
-    
+
     // 计算连线路径
     calculateLinkPath(source, target) {
       // 检查节点位置是否有效
@@ -336,49 +367,49 @@ export default {
           isNaN(source.x) || isNaN(source.y) || isNaN(target.x) || isNaN(target.y)) {
         return 'M0,0 L0,0'; // 返回一个有效的空路径
       }
-      
+
       const dx = target.x - source.x;
       const dy = target.y - source.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       // 如果距离为0或非常小，返回一个简单的路径
       if (distance < 1) {
         return `M${source.x},${source.y} L${target.x},${target.y}`;
       }
-      
+
       // 获取节点半径
       const sourceRadius = this.getNodeRadius(source);
       const targetRadius = this.getNodeRadius(target);
-      
+
       // 计算连线在圆圈边缘的起点和终点
       const sourceX = source.x + (dx / distance) * sourceRadius;
       const sourceY = source.y + (dy / distance) * sourceRadius;
       const targetX = target.x - (dx / distance) * targetRadius;
       const targetY = target.y - (dy / distance) * targetRadius;
-      
+
       // 创建一个偏移量，根据连线方向来确定曲线的方向
       const offset = 30 * (dy > 0 ? 1 : -1);
-      
+
       // 使用二次贝塞尔曲线，从圆圈边缘到圆圈边缘
       const midX = (sourceX + targetX) / 2;
       const midY = (sourceY + targetY) / 2 + offset;
-      
+
       return `M${sourceX},${sourceY} Q${midX},${midY} ${targetX},${targetY}`;
     },
-    
+
     // 拖拽开始
     dragstarted(event, d) {
       if (!event.active) this.simulation.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
     },
-    
+
     // 拖拽中
     dragged(event, d) {
       d.fx = event.x;
       d.fy = event.y;
     },
-    
+
     // 拖拽结束
     dragended(event, d) {
       if (!event.active) this.simulation.alphaTarget(0);
@@ -387,11 +418,11 @@ export default {
       const targetElement = event.sourceEvent.target.closest('g');
       if (targetElement) {
         d3.select(targetElement)
-          .select("circle")
-          .classed("fixed", true);
+            .select("circle")
+            .classed("fixed", true);
       }
     },
-    
+
     // 节点点击事件
     handleNodeClick(node) {
       if (this.linkCreationMode) {
@@ -400,16 +431,16 @@ export default {
       } else {
         // 正常模式下，编辑节点
         this.selectedNode = node;
-        this.editingNode = { ...node };
+        this.editingNode = {...node};
         this.showNodeModal = true;
       }
     },
-    
+
     // 初始化图表
     initGraph() {
       const container = this.$refs.canvas;
       if (!container) return;
-      
+
       // 先清理现有元素
       try {
         d3.select(container).selectAll("*").remove();
@@ -417,103 +448,103 @@ export default {
         console.warn('清理图表元素时出错:', error);
         return;
       }
-      
+
       if (!Array.isArray(this.graphNodes) || !this.graphNodes.length) {
         console.warn('没有可用的图表数据');
         return;
       }
-      
+
       // 获取容器尺寸
       const width = container.clientWidth;
       const height = container.clientHeight;
-      
+
       if (!width || !height) {
         console.warn('图表容器尺寸无效');
         return;
       }
-      
+
       // 创建SVG容器
       const svg = d3.select(container)
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
-      
+          .append("svg")
+          .attr("width", width)
+          .attr("height", height);
+
       // 创建箭头标记
       svg.append("defs").append("marker")
-        .attr("id", "arrow")
-        .attr("viewBox", "0 -5 10 10")
-        .attr("refX", 8)
-        .attr("refY", 0)
-        .attr("markerWidth", 8)
-        .attr("markerHeight", 8)
-        .attr("orient", "auto")
-        .append("path")
-        .attr("d", "M0,-5L10,0L0,5")
-        .attr("fill", "#666");
-      
+          .attr("id", "arrow")
+          .attr("viewBox", "0 -5 10 10")
+          .attr("refX", 8)
+          .attr("refY", 0)
+          .attr("markerWidth", 8)
+          .attr("markerHeight", 8)
+          .attr("orient", "auto")
+          .append("path")
+          .attr("d", "M0,-5L10,0L0,5")
+          .attr("fill", "#666");
+
       // 创建容器组
       const g = svg.append("g");
-      
+
       // 创建力导向图布局
       this.simulation = d3.forceSimulation(this.graphNodes)
-        .force("link", d3.forceLink(this.graphLinks)
-          .id(d => d.id)
-          .distance(180)
-          .strength(0.6))
-        .force("charge", d3.forceManyBody()
-          .strength(-800)
-          .distanceMax(400))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide()
-          .radius(d => this.getNodeRadius(d) + 25)
-          .strength(1.0))
-        .force("x", d3.forceX(width / 2).strength(0.05))
-        .force("y", d3.forceY(height / 2).strength(0.05));
-      
+          .force("link", d3.forceLink(this.graphLinks)
+              .id(d => d.id)
+              .distance(180)
+              .strength(0.6))
+          .force("charge", d3.forceManyBody()
+              .strength(-800)
+              .distanceMax(400))
+          .force("center", d3.forceCenter(width / 2, height / 2))
+          .force("collision", d3.forceCollide()
+              .radius(d => this.getNodeRadius(d) + 25)
+              .strength(1.0))
+          .force("x", d3.forceX(width / 2).strength(0.05))
+          .force("y", d3.forceY(height / 2).strength(0.05));
+
       // 创建节点组
       const nodes = g.append("g")
-        .selectAll("g")
-        .data(this.graphNodes)
-        .enter()
-        .append("g")
-        .call(d3.drag()
-          .on("start", this.dragstarted)
-          .on("drag", this.dragged)
-          .on("end", this.dragended))
-        .on("dblclick", (event, d) => {
-          event.stopPropagation();
-          // 切换固定状态
-          d.isFixed = !d.isFixed;
-          if (!d.isFixed) {
-            d.fx = null;
-            d.fy = null;
-          } else {
-            d.fx = d.x;
-            d.fy = d.y;
-          }
-          // 更新节点样式
-          const targetElement = event.target.closest('g');
-          if (targetElement) {
-            d3.select(targetElement)
-              .select("circle")
-              .classed("fixed", d.isFixed);
-          }
-        });
-      
+          .selectAll("g")
+          .data(this.graphNodes)
+          .enter()
+          .append("g")
+          .call(d3.drag()
+              .on("start", this.dragstarted)
+              .on("drag", this.dragged)
+              .on("end", this.dragended))
+          .on("dblclick", (event, d) => {
+            event.stopPropagation();
+            // 切换固定状态
+            d.isFixed = !d.isFixed;
+            if (!d.isFixed) {
+              d.fx = null;
+              d.fy = null;
+            } else {
+              d.fx = d.x;
+              d.fy = d.y;
+            }
+            // 更新节点样式
+            const targetElement = event.target.closest('g');
+            if (targetElement) {
+              d3.select(targetElement)
+                  .select("circle")
+                  .classed("fixed", d.isFixed);
+            }
+          });
+
       // 添加节点圆形
       nodes.append("circle")
-        .attr("r", d => this.getNodeRadius(d))
-        .attr("fill", d => this.getNodeColor(d.type))
-        .attr("stroke", "none")
-        .attr("stroke-width", 0)
-        .style("filter", "drop-shadow(1px 1px 3px rgba(0,0,0,0.15))")
-        .classed("fixed", d => d.isFixed)
-        .classed("node-circle", true)
-        .on("click", (event, d) => {
-          event.stopPropagation();
-          this.handleNodeClick(d);
-        });
-      
+          .attr("r", d => this.getNodeRadius(d))
+          .attr("fill", d => this.getNodeColor(d.type))
+          .attr("stroke", "none")
+          .attr("stroke-width", 0)
+          .style("filter", "drop-shadow(1px 1px 3px rgba(0,0,0,0.15))")
+          .classed("fixed", d => d.isFixed)
+          .classed("node-circle", true)
+          .on("click", (event, d) => {
+            event.stopPropagation();
+            this.handleNodeClick(d);
+          });
+
       // 添加节点名称（在圆圈内，支持换行）
       const vm = this; // 保存 Vue 组件实例的引用
       nodes.each(function (d) {
@@ -522,71 +553,71 @@ export default {
         const lineHeight = 16;
         const totalHeight = lines.length * lineHeight;
         const startY = -totalHeight / 2 + lineHeight / 2;
-        
+
         lines.forEach((line, index) => {
           nodeGroup.append("text")
-            .text(line)
-            .attr("text-anchor", "middle")
-            .attr("dy", startY + index * lineHeight)
-            .attr("fill", "#fff")
-            .attr("font-size", lines.length > 2 ? "12px" : lines.length > 1 ? "14px" : "16px")
-            .attr("font-weight", "bold")
-            .attr("class", "node-name clickable")
-            .style("pointer-events", "all")
-            .on("click", (event) => {
-              event.stopPropagation();
-              vm.handleNodeClick(d);
-            });
+              .text(line)
+              .attr("text-anchor", "middle")
+              .attr("dy", startY + index * lineHeight)
+              .attr("fill", "#fff")
+              .attr("font-size", lines.length > 2 ? "12px" : lines.length > 1 ? "14px" : "16px")
+              .attr("font-weight", "bold")
+              .attr("class", "node-name clickable")
+              .style("pointer-events", "all")
+              .on("click", (event) => {
+                event.stopPropagation();
+                vm.handleNodeClick(d);
+              });
         });
       });
-      
+
       // 添加类型标签（在圆圈下方）
       nodes.append("text")
-        .text(d => d.type || '')
-        .attr("text-anchor", "middle")
-        .attr("dy", d => this.getNodeRadius(d) + 20)
-        .attr("fill", "#666")
-        .attr("font-size", "12px")
-        .attr("font-weight", "600")
-        .attr("class", "type-label clickable")
-        .on("click", (event, d) => {
-          event.stopPropagation();
-          vm.handleNodeClick(d);
-        });
-      
+          .text(d => d.type || '')
+          .attr("text-anchor", "middle")
+          .attr("dy", d => this.getNodeRadius(d) + 20)
+          .attr("fill", "#666")
+          .attr("font-size", "12px")
+          .attr("font-weight", "600")
+          .attr("class", "type-label clickable")
+          .on("click", (event, d) => {
+            event.stopPropagation();
+            vm.handleNodeClick(d);
+          });
+
       // 创建连线组
       const linkGroup = g.append("g")
-        .selectAll("g")
-        .data(this.graphLinks)
-        .enter()
-        .append("g");
-      
+          .selectAll("g")
+          .data(this.graphLinks)
+          .enter()
+          .append("g");
+
       // 添加连线
       linkGroup.append("path")
-        .attr("stroke", d => this.getLinkColor(d.type))
-        .attr("stroke-opacity", 0.8)
-        .attr("stroke-width", 2)
-        .attr("fill", "transparent")
-        .attr("marker-end", "url(#arrow)")
-        .attr("class", "link-line")
-        .attr("d", d => this.calculateLinkPath(d.source, d.target))
-        .on("click", (event, d) => {
-          event.stopPropagation();
-          vm.handleLinkClick(d);
-        });
+          .attr("stroke", d => this.getLinkColor(d.type))
+          .attr("stroke-opacity", 0.8)
+          .attr("stroke-width", 2)
+          .attr("fill", "transparent")
+          .attr("marker-end", "url(#arrow)")
+          .attr("class", "link-line")
+          .attr("d", d => this.calculateLinkPath(d.source, d.target))
+          .on("click", (event, d) => {
+            event.stopPropagation();
+            vm.handleLinkClick(d);
+          });
 
       // 添加关系文本（在连线上）
       const linkLabels = linkGroup.append("text")
-        .attr("text-anchor", "middle")
-        .attr("dy", -5)
-        .attr("fill", "#303133")
-        .attr("font-size", "12px")
-        .attr("class", "relation-label clickable")
-        .text(d => d.name || d.type)
-        .on("click", (event, d) => {
-          event.stopPropagation();
-          vm.handleLinkClick(d);
-        });
+          .attr("text-anchor", "middle")
+          .attr("dy", -5)
+          .attr("fill", "#303133")
+          .attr("font-size", "12px")
+          .attr("class", "relation-label clickable")
+          .text(d => d.name || d.type)
+          .on("click", (event, d) => {
+            event.stopPropagation();
+            vm.handleLinkClick(d);
+          });
 
       // 为关系文本添加背景
       linkLabels.each(function (d) {
@@ -595,30 +626,30 @@ export default {
         const parent = this.parentElement;
         if (parent) {
           d3.select(parent)
-            .insert("rect", "text")
-            .attr("x", bbox.x - padding)
-            .attr("y", bbox.y - padding)
-            .attr("width", bbox.width + 2 * padding)
-            .attr("height", bbox.height + 2 * padding)
-            .attr("fill", "white")
-            .attr("fill-opacity", 0.8)
-            .attr("rx", 2)
-            .attr("ry", 2)
-            .attr("class", "relation-label-bg clickable")
-            .style("cursor", "pointer")
-            .on("click", (event) => {
-              event.stopPropagation();
-              vm.handleLinkClick(d);
-            });
+              .insert("rect", "text")
+              .attr("x", bbox.x - padding)
+              .attr("y", bbox.y - padding)
+              .attr("width", bbox.width + 2 * padding)
+              .attr("height", bbox.height + 2 * padding)
+              .attr("fill", "white")
+              .attr("fill-opacity", 0.8)
+              .attr("rx", 2)
+              .attr("ry", 2)
+              .attr("class", "relation-label-bg clickable")
+              .style("cursor", "pointer")
+              .on("click", (event) => {
+                event.stopPropagation();
+                vm.handleLinkClick(d);
+              });
         }
       });
-      
+
       // 更新力导向图的tick函数
       this.simulation.on("tick", () => {
         // 更新连线位置
         linkGroup.selectAll("path")
-          .attr("d", d => this.calculateLinkPath(d.source, d.target));
-        
+            .attr("d", d => this.calculateLinkPath(d.source, d.target));
+
         // 更新节点组位置
         nodes.attr("transform", d => {
           const x = isNaN(d.x) ? 0 : d.x;
@@ -674,20 +705,20 @@ export default {
           if (bbox) {
             text.attr("x", midX).attr("y", midY);
             rect
-              .attr("x", midX - bbox.width / 2 - 2)
-              .attr("y", midY - bbox.height - 2);
+                .attr("x", midX - bbox.width / 2 - 2)
+                .attr("y", midY - bbox.height - 2);
           }
         });
       });
     },
-    
+
     // 处理窗口大小变化
     handleResize() {
       if (this.$refs.canvas && this.graphNodes && this.graphNodes.length > 0) {
         this.initGraph();
       }
     },
-    
+
     // 销毁图表
     destroyGraph() {
       if (this.simulation) {
@@ -702,19 +733,19 @@ export default {
         }
       }
     },
-    
+
     createNewAgent() {
       this.showCreateModal = true;
-      this.newAgent = { name: '', description: '' };
+      this.newAgent = {name: '', description: ''};
     },
-    
+
     closeCreateModal() {
       this.showCreateModal = false;
     },
-    
+
     async createAgent() {
       try {
-        const response = await agentOrchestrationApi.create(this.newAgent);
+        const response = await agentApi.create(this.newAgent);
         const data = response.data.data || response.data;
         this.agents.push(data);
         this.currentAgent = data;
@@ -728,82 +759,102 @@ export default {
         console.error('创建代理失败:', error);
       }
     },
-    
+
     addNode() {
-      const newNode = {
-        id: this.nextNodeId++,
-        name: `节点${this.nextNodeId - 1}`,
+      this.editingNode = {
+        name: `节点${this.graphNodes.length + 1}`,
         type: 'process',
         x: 400 + Math.random() * 200 - 100,
         y: 300 + Math.random() * 200 - 100,
         yamlConfig: '',
         config: {},
-        isFixed: false
+        isFixed: false,
+        agentId: this.currentAgent?.id
       };
-      
-      this.graphNodes.push(newNode);
-      console.log("addNode, this.graphNodes", this.graphNodes);
-      
-      // 重新初始化图表以显示新节点
-      this.initGraph();
+      this.selectedNode = null;
+      this.showNodeModal = true;
     },
-    
+
+    editNode(node) {
+      this.editingNode = {...node};
+      this.selectedNode = node;
+      this.showNodeModal = true;
+    },
+
     closeNodeModal() {
       this.showNodeModal = false;
       this.selectedNode = null;
       this.editingNode = {};
     },
-    
+
     async saveNode() {
-      if (!this.selectedNode) return;
-      
-      // 更新节点数据
-      const nodeIndex = this.graphNodes.findIndex(n => n.id === this.selectedNode.id);
-      if (nodeIndex !== -1) {
-        this.graphNodes[nodeIndex] = { ...this.editingNode };
+      if (!this.editingNode.name) {
+        alert('请输入节点名称');
+        return;
       }
-      
-      // 如果是现有节点，更新到后端
-      if (this.selectedNode.id < 10000) { // 假设ID小于10000的是已存在的节点
-        try {
-          await agentOrchestrationApi.updateNode(this.selectedNode.id, {
-            name: this.editingNode.name,
-            type: this.editingNode.type,
-            positionX: Math.round(this.editingNode.x || 0),
-            positionY: Math.round(this.editingNode.y || 0),
-            yamlConfig: this.editingNode.yamlConfig
-          });
-        } catch (error) {
-          console.error('更新节点失败:', error);
+
+      try {
+        const nodeData = {
+          name: this.editingNode.name,
+          type: this.editingNode.type,
+          agentId: this.currentAgent?.id,
+          positionX: Math.round(this.editingNode.x || 0),
+          positionY: Math.round(this.editingNode.y || 0),
+          yamlConfig: this.editingNode.yamlConfig || '',
+          config: JSON.stringify(this.editingNode.config || {}),
+          isFixed: this.editingNode.isFixed || false
+        };
+
+        if (this.selectedNode) {
+          // 编辑现有节点
+          nodeData.id = this.selectedNode.id;
+          await agentApi.saveUpdateNode(nodeData);
+          
+          // 更新本地数据
+          const nodeIndex = this.graphNodes.findIndex(n => n.id === this.selectedNode.id);
+          if (nodeIndex !== -1) {
+            this.graphNodes[nodeIndex] = {...this.editingNode, id: this.selectedNode.id};
+          }
+        } else {
+          // 创建新节点
+          const response = await agentApi.saveUpdateNode(nodeData);
+          const newNode = {
+            ...this.editingNode,
+            id: response.data || Date.now().toString()
+          };
+          this.graphNodes.push(newNode);
         }
+
+        this.closeNodeModal();
+        this.initGraph();
+      } catch (error) {
+        console.error('保存节点失败:', error);
+        alert('保存节点失败');
       }
-      
-      this.closeNodeModal();
-      this.initGraph(); // 重新初始化图表以显示更新
     },
-    
+
     async deleteNode() {
       if (!this.selectedNode) return;
-      
+
       if (confirm('确定要删除这个节点吗？')) {
         // 从前端数组中移除
         this.graphNodes = this.graphNodes.filter(n => n.id !== this.selectedNode.id);
-        
+
         // 如果是现有节点，从后端删除
         if (this.selectedNode.id < 10000) {
           try {
-            await agentOrchestrationApi.deleteNode(this.selectedNode.id);
+            await agentApi.deleteNode(this.selectedNode.id);
           } catch (error) {
             console.error('删除节点失败:', error);
           }
         }
-        
+
         this.closeNodeModal();
         this.simulation.nodes(this.graphNodes);
         this.simulation.alpha(1).restart();
       }
     },
-    
+
     clearWorkspace() {
       if (confirm('确定要清空所有节点和连线吗？')) {
         this.graphNodes = [];
@@ -813,57 +864,25 @@ export default {
         this.destroyGraph();
       }
     },
-    
-    async saveAgent() {
-      if (!this.currentAgent) return;
-      
-      try {
-        // 保存节点位置和配置
-        const flowData = {
-          nodes: this.graphNodes,
-          links: this.graphLinks
-        };
-        
-        await agentOrchestrationApi.updateFlow(this.currentAgent.id, JSON.stringify(flowData));
-        
-        // 保存每个节点的配置
-        for (const node of this.graphNodes) {
-          if (node.id < 10000) {
-            await orchestrationApi.updateNode(node.id, {
-              name: node.name,
-              type: node.type,
-              positionX: Math.round(node.x || 0),
-              positionY: Math.round(node.y || 0),
-              yamlConfig: node.yamlConfig
-            });
-          }
-        }
-        
-        alert('代理保存成功！');
-      } catch (error) {
-        console.error('保存代理失败:', error);
-        alert('保存失败，请重试');
-      }
-    },
-    
+
     // ===== 连线相关方法 =====
-    
+
     // 开始创建连线
     startLinkCreation() {
       this.linkCreationMode = true;
       this.tempLinkSource = null;
     },
-    
+
     // 取消连线创建
     cancelLinkCreation() {
       this.linkCreationMode = false;
       this.tempLinkSource = null;
     },
-    
+
     // 处理连线创建模式下的节点点击
     handleLinkCreationNodeClick(node) {
       if (!this.linkCreationMode) return;
-      
+
       if (!this.tempLinkSource) {
         // 第一次点击，选择源节点
         this.tempLinkSource = node;
@@ -877,62 +896,93 @@ export default {
         this.tempLinkSource = null;
       }
     },
-    
+
     // 创建连线
     createLink(sourceNode, targetNode) {
-      const newLink = {
-        id: this.nextLinkId++,
+      this.editingLink = {
         source: sourceNode.id,
         target: targetNode.id,
         type: 'flow',
         name: `${sourceNode.name} → ${targetNode.name}`,
         description: '',
-        condition: ''
+        condition: '',
+        agentId: this.currentAgent?.id
       };
-      
-      this.graphLinks.push(newLink);
-      this.initGraph(); // 重新渲染图表
+      this.selectedLink = null;
+      this.showLinkModal = true;
     },
-    
+
     // 连线点击事件
     handleLinkClick(link) {
       this.selectedLink = link;
-      this.editingLink = { ...link };
+      this.editingLink = {...link};
       this.showLinkModal = true;
     },
-    
+
     // 关闭连线模态框
     closeLinkModal() {
       this.showLinkModal = false;
       this.selectedLink = null;
       this.editingLink = {};
     },
-    
-    // 保存连线
-    saveLink() {
-      if (!this.selectedLink) return;
-      
-      // 更新连线数据
-      const linkIndex = this.graphLinks.findIndex(l => l.id === this.selectedLink.id);
-      if (linkIndex !== -1) {
-        this.graphLinks[linkIndex] = { ...this.editingLink };
+
+    // 保存连线（统一处理新增和编辑）
+    async saveLink() {
+      if (!this.editingLink.name) {
+        alert('请输入连线名称');
+        return;
       }
-      
-      this.closeLinkModal();
-      this.initGraph(); // 重新渲染图表
+
+      try {
+        const linkData = {
+          source: this.editingLink.source,
+          target: this.editingLink.target,
+          type: this.editingLink.type,
+          name: this.editingLink.name,
+          description: this.editingLink.description || '',
+          condition: this.editingLink.condition || '',
+          agentId: this.currentAgent?.id
+        };
+
+        if (this.selectedLink) {
+          // 编辑现有连线
+          linkData.id = this.selectedLink.id;
+          await agentApi.saveUpdateLink(linkData);
+          
+          // 更新本地数据
+          const linkIndex = this.graphLinks.findIndex(l => l.id === this.selectedLink.id);
+          if (linkIndex !== -1) {
+            this.graphLinks[linkIndex] = {...this.editingLink, id: this.selectedLink.id};
+          }
+        } else {
+          // 创建新连线
+          const response = await agentApi.saveUpdateLink(linkData);
+          const newLink = {
+            ...this.editingLink,
+            id: response.data || Date.now().toString()
+          };
+          this.graphLinks.push(newLink);
+        }
+
+        this.closeLinkModal();
+        this.initGraph();
+      } catch (error) {
+        console.error('保存连线失败:', error);
+        alert('保存连线失败');
+      }
     },
-    
+
     // 删除连线
     deleteLink() {
       if (!this.selectedLink) return;
-      
+
       if (confirm('确定要删除这条连线吗？')) {
         this.graphLinks = this.graphLinks.filter(l => l.id !== this.selectedLink.id);
         this.closeLinkModal();
         this.initGraph(); // 重新渲染图表
       }
     },
-    
+
     // 获取连线颜色
     getLinkColor(type) {
       const colors = {
@@ -942,47 +992,6 @@ export default {
         error: '#f5222d'
       };
       return colors[type] || '#666';
-    },
-
-    // 测试 LangChain Stream
-    async testLangChainStream() {
-      const testMessage = '你好，这是一个测试消息';
-      try {
-        const response = await fetch('/api/chat/test-langchain-stream?message=' + encodeURIComponent(testMessage), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let result = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (line.trim()) {
-              result += line + '\n';
-              console.log('LangChain Stream 响应:', line);
-            }
-          }
-        }
-
-        alert('LangChain Stream 测试完成！\n\n响应内容:\n' + result);
-      } catch (error) {
-        console.error('LangChain Stream 测试失败:', error);
-        alert('LangChain Stream 测试失败: ' + error.message);
-      }
     }
   }
 };
@@ -1303,12 +1312,12 @@ export default {
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 1000;
-  
+
   .hint-content {
     display: flex;
     align-items: center;
     gap: 12px;
-    
+
     p {
       margin: 0;
       font-weight: 500;
@@ -1320,7 +1329,7 @@ export default {
 .btn-info {
   background: #17a2b8;
   color: white;
-  
+
   &:hover {
     background: #138496;
   }
@@ -1329,7 +1338,7 @@ export default {
 .btn-warning {
   background: #ffc107;
   color: #212529;
-  
+
   &:hover {
     background: #e0a800;
   }
@@ -1342,20 +1351,20 @@ export default {
     pointer-events: all;
     user-select: none;
     font-weight: 500;
-    
+
     &.highlighted {
       fill: #409eff !important;
       font-weight: bold;
     }
   }
-  
+
   .relation-label-bg {
     cursor: pointer;
-    
+
     &:hover {
       fill-opacity: 1 !important;
     }
-    
+
     &.highlighted {
       fill: #409eff !important;
       fill-opacity: 0.3 !important;

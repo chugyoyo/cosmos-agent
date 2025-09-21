@@ -11,7 +11,7 @@
           router
           class="sidebar-menu"
         >
-          <el-menu-item index="/dashboard">
+          <el-menu-item index="/">
             <el-icon><House /></el-icon>
             <span>首页</span>
           </el-menu-item>
@@ -91,7 +91,7 @@ initializeTheme()
 
 const currentPage = computed(() => {
   const routeMap: Record<string, string> = {
-    '/dashboard': '首页',
+    '/': '首页',
     '/settings': '设置',
     '/testing': '智能测试',
     '/agent': 'Agent管理',

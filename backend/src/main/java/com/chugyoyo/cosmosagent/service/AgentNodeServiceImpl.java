@@ -2,10 +2,13 @@ package com.chugyoyo.cosmosagent.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.chugyoyo.cosmosagent.dto.AgentLinkDTO;
 import com.chugyoyo.cosmosagent.entity.AgentNode;
 import com.chugyoyo.cosmosagent.mapper.AgentNodeMapper;
 import com.chugyoyo.cosmosagent.dto.AgentNodeDTO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +20,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode> implements AgentNodeService {
     
-    private final AgentNodeMapper nodeMapper;
+    private final AgentNodeMapper agentNodeMapper;
     
     @Override
     public List<AgentNodeDTO> getNodesByAgentId(Long agentId) {
@@ -25,7 +28,7 @@ public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode
         wrapper.eq(AgentNode::getAgentId, agentId);
         wrapper.orderByAsc(AgentNode::getId);
         
-        List<AgentNode> nodes = nodeMapper.selectList(wrapper);
+        List<AgentNode> nodes = agentNodeMapper.selectList(wrapper);
         return nodes.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -33,77 +36,47 @@ public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode
 
     @Override
     @Transactional
-    public AgentNodeDTO createNode(AgentNodeDTO dto) {
+    public AgentNodeDTO saveUpdateNode(AgentNodeDTO dto) {
         AgentNode node = convertToEntity(dto);
-        node.setCreatedAt(LocalDateTime.now());
         node.setUpdatedAt(LocalDateTime.now());
-        nodeMapper.insert(node);
+        saveOrUpdate(node);
         return convertToDTO(node);
     }
-    
-    @Override
-    @Transactional
-    public AgentNodeDTO updateNode(Long id, AgentNodeDTO dto) {
-        AgentNode existing = nodeMapper.selectById(id);
-        if (existing == null) {
-            throw new RuntimeException("代理节点不存在");
-        }
-        
-        AgentNode node = convertToEntity(dto);
-        node.setId(id);
-        node.setAgentId(existing.getAgentId());
-        node.setCreatedAt(existing.getCreatedAt());
-        node.setUpdatedAt(LocalDateTime.now());
-        nodeMapper.updateById(node);
-        return convertToDTO(node);
-    }
-    
+
     @Override
     @Transactional
     public void deleteNode(Long id) {
-        nodeMapper.deleteById(id);
+        agentNodeMapper.deleteById(id);
     }
     
     @Override
     @Transactional
     public AgentNodeDTO updateNodeYaml(Long id, String yamlConfig) {
-        AgentNode node = nodeMapper.selectById(id);
+        AgentNode node = agentNodeMapper.selectById(id);
         if (node == null) {
             throw new RuntimeException("代理节点不存在");
         }
         
         node.setYamlConfig(yamlConfig);
         node.setUpdatedAt(LocalDateTime.now());
-        nodeMapper.updateById(node);
+        agentNodeMapper.updateById(node);
         return convertToDTO(node);
     }
-    
+
+    @Override
+    public void saveUpdateLink(AgentLinkDTO dto) {
+        // TODo 数据库
+    }
+
     private AgentNodeDTO convertToDTO(AgentNode entity) {
         AgentNodeDTO dto = new AgentNodeDTO();
-        dto.setId(entity.getId());
-        dto.setAgentId(entity.getAgentId());
-        dto.setName(entity.getName());
-        dto.setType(entity.getType());
-        dto.setStatus(entity.getStatus());
-        dto.setPositionX(entity.getPositionX());
-        dto.setPositionY(entity.getPositionY());
-        dto.setConfig(entity.getConfig());
-        dto.setYamlConfig(entity.getYamlConfig());
-        dto.setCreatedAt(entity.getCreatedAt());
-        dto.setUpdatedAt(entity.getUpdatedAt());
+        BeanUtils.copyProperties(entity, dto);
         return dto;
     }
-    
+
     private AgentNode convertToEntity(AgentNodeDTO dto) {
         AgentNode entity = new AgentNode();
-        entity.setAgentId(dto.getAgentId());
-        entity.setName(dto.getName());
-        entity.setType(dto.getType());
-        entity.setStatus(dto.getStatus());
-        entity.setPositionX(dto.getPositionX());
-        entity.setPositionY(dto.getPositionY());
-        entity.setConfig(dto.getConfig());
-        entity.setYamlConfig(dto.getYamlConfig());
+        BeanUtils.copyProperties(dto, entity);
         return entity;
     }
 }
