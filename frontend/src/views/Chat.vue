@@ -363,8 +363,8 @@ const sendMessage = async () => {
       const lines = chunk.split('\n')
       
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
+        if (line.startsWith('data:')) {
+          const data = line.slice(5)
           if (data === '[DONE]') {
             return
           }

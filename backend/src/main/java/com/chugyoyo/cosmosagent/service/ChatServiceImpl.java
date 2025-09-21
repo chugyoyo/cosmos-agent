@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatServiceImpl implements ChatService {
-    
+
     private final ChatSessionService chatSessionService;
     private final ChatMessageService chatMessageService;
     private final ZhipuaiService zhipuaiService;
@@ -27,30 +27,30 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public ChatSessionDTO createOrGetSession(Long agentId, String sessionName) {
         List<ChatSessionDTO> existingSessions = chatSessionService.getLatestSessionsByAgentId(agentId, 1);
-        
+
         if (!existingSessions.isEmpty()) {
             return existingSessions.get(0);
         }
-        
+
         ChatSessionDTO sessionDTO = new ChatSessionDTO();
         sessionDTO.setAgentId(agentId);
         sessionDTO.setName(sessionName);
         sessionDTO.setStatus(0);
-        
+
         return chatSessionService.createSession(sessionDTO);
     }
-    
+
     @Override
     public ChatSessionDTO getDefaultSessionByAgentId(Long agentId) {
         List<ChatSessionDTO> sessions = chatSessionService.getLatestSessionsByAgentId(agentId, 1);
         return sessions.isEmpty() ? null : sessions.get(0);
     }
-    
+
     @Override
     public List<ChatSessionDTO> getAgentSessions(Long agentId) {
         return chatSessionService.getSessionsByAgentId(agentId);
     }
-    
+
     @Override
     @Transactional
     public Flux<String> sendMessageStream(ChatRequest request) {
@@ -65,7 +65,7 @@ public class ChatServiceImpl implements ChatService {
             } else {
                 session = createOrGetSession(request.getAgentId(), "默认会话 " + LocalDateTime.now());
             }
-            
+
             // 保存用户消息
             ChatMessageDTO userMessage = new ChatMessageDTO();
             userMessage.setSessionId(session.getId());
@@ -78,10 +78,8 @@ public class ChatServiceImpl implements ChatService {
             return zhipuaiService.streamChat(request.getMessage())
                     .doOnNext(content -> {
                         // 累积AI回复内容
-                        if (content != null && !content.isEmpty() && !content.equals("[DONE]")) {
-                            aiResponseBuilder.append(content);
-                            log.debug("收到AI回复片段: {}", content);
-                        }
+                        log.debug("收到AI回复片段: {}", content);
+                        aiResponseBuilder.append(content);
                     })
                     .doOnComplete(() -> {
                         // 流式响应完成，保存完整的AI回复
@@ -106,7 +104,7 @@ public class ChatServiceImpl implements ChatService {
                         chatMessageService.createMessage(errorMessageDto);
                         return Flux.just(errorMessage);
                     });
-                    
+
         } catch (Exception e) {
             log.error("处理流式消息失败", e);
             return Flux.error(new RuntimeException("处理消息失败: " + e.getMessage()));

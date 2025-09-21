@@ -73,20 +73,27 @@ public class ZhipuaiServiceImpl implements ZhipuaiService {
                     .accept(MediaType.TEXT_EVENT_STREAM)
                     .bodyValue(requestBody)
                     .retrieve()
-                    .bodyToFlux(new ParameterizedTypeReference<String>() {})
-                    .timeout(Duration.ofSeconds(60))
-//                    .filter(line -> line.startsWith("data:"))
-                    .filter(content -> !content.isEmpty() && !content.equals("[DONE]"))
-                    .doOnNext(content -> {
-                        if (!content.equals("[DONE]")) {
-                            log.info("发送内容到客户端: {}", content);
-                        }
+                    .bodyToFlux(new ParameterizedTypeReference<String>() {
                     })
-                    .onErrorResume(e -> {
-                        log.error("智谱AI流式调用失败", e);
-                        return Flux.error(new RuntimeException("AI服务调用失败: " + e.getMessage()));
+                    .timeout(Duration.ofSeconds(60))
+                    .filter(content -> !content.isEmpty() && !content.equals("[DONE]"))
+                    .map(content -> {
+                        try {
+                            // 解析JSON并提取文本内容
+                            JsonNode jsonNode = objectMapper.readTree(content);
+                            JsonNode choicesNode = jsonNode.get("choices");
+                            if (choicesNode != null && choicesNode.size() > 0) {
+                                JsonNode deltaNode = choicesNode.get(0).get("delta");
+                                if (deltaNode != null && deltaNode.has("content")) {
+                                    return deltaNode.get("content").asText();
+                                }
+                            }
+                            return "";
+                        } catch (Exception e) {
+                            log.warn("解析流式响应失败，返回原始内容: {}", e.getMessage());
+                            return content;
+                        }
                     });
-
         } catch (Exception e) {
             log.error("初始化智谱AI流式服务失败", e);
             return Flux.error(new RuntimeException("初始化AI服务失败: " + e.getMessage()));
