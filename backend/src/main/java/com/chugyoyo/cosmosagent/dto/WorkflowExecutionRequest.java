@@ -16,10 +16,8 @@ public class WorkflowExecutionRequest {
     @NotNull(message = "代理ID不能为空")
     private Long agentId;
     
-    @NotNull(message = "工作流节点不能为空")
     private List<WorkflowNodeDTO> nodes;
     
-    @NotNull(message = "工作流连线不能为空")
     private List<WorkflowLinkDTO> links;
     
     private Map<String, Object> params;

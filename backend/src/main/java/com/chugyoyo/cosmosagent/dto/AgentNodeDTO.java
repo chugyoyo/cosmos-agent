@@ -39,6 +39,10 @@ public class AgentNodeDTO {
     
     private String yamlConfig;
     
+    private String llmConfig;
+    
+    private String startConfig;
+    
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;

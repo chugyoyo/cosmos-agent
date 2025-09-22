@@ -63,8 +63,8 @@
           <div class="form-group">
             <label>节点类型:</label>
             <select v-model="editingNode.type" class="form-control">
-              <option value="START">开始节点</option>
-              <option value="LLM">LLM节点</option>
+              <option value="START">START</option>
+              <option value="LLM">LLM</option>
             </select>
           </div>
           
@@ -152,41 +152,7 @@
       </div>
     </div>
 
-    <!-- 节点编辑模态框 -->
-    <div v-if="showNodeModal" class="modal-overlay" @click="closeNodeModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>编辑节点 - {{ selectedNode?.name }}</h3>
-          <button @click="closeNodeModal" class="close-btn">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>节点名称:</label>
-            <input v-model="editingNode.name" class="form-control"/>
-          </div>
-          <div class="form-group">
-            <label>节点类型:</label>
-            <select v-model="editingNode.type" class="form-control">
-              <option value="input">输入节点</option>
-              <option value="process">处理节点</option>
-              <option value="output">输出节点</option>
-              <option value="condition">条件节点</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>YAML 配置:</label>
-            <textarea v-model="editingNode.yamlConfig" class="form-control yaml-editor" rows="10"
-                      placeholder="输入 YAML 配置..."></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="saveNode" class="btn btn-primary">保存</button>
-          <button @click="deleteNode" class="btn btn-danger">删除</button>
-          <button @click="closeNodeModal" class="btn btn-secondary">取消</button>
-        </div>
-      </div>
-    </div>
-
+  
     <!-- 连线编辑模态框 -->
     <div v-if="showLinkModal" class="modal-overlay" @click="closeLinkModal">
       <div class="modal-content" @click.stop>
@@ -440,7 +406,18 @@ export default {
           x: node.positionX,
           y: node.positionY,
           yamlConfig: node.yamlConfig || '',
-          config: node.config ? JSON.parse(node.config) : {}
+          config: node.config ? JSON.parse(node.config) : {},
+          llmConfig: node.llmConfig ? JSON.parse(node.llmConfig) : {
+            model: 'gpt-3.5-turbo',
+            systemPrompt: '',
+            userPrompt: '',
+            temperature: 0.7,
+            maxTokens: 1000,
+            inputVariables: []
+          },
+          startConfig: node.startConfig ? JSON.parse(node.startConfig) : {
+            inputVariables: []
+          }
         }));
 
         // 加载连线数据
@@ -957,6 +934,24 @@ export default {
       }
     },
 
+    // START节点配置相关方法
+    addStartVariable() {
+      if (!this.editingNode.startConfig.inputVariables) {
+        this.editingNode.startConfig.inputVariables = [];
+      }
+      this.editingNode.startConfig.inputVariables.push({
+        name: '',
+        defaultValue: '',
+        description: ''
+      });
+    },
+
+    removeStartVariable(index) {
+      if (this.editingNode.startConfig.inputVariables) {
+        this.editingNode.startConfig.inputVariables.splice(index, 1);
+      }
+    },
+
     // 工作流运行相关方法
     runWorkflow() {
       this.startNode = this.graphNodes.find(node => node.type === 'START');
@@ -988,8 +983,6 @@ export default {
       try {
         const workflowData = {
           agentId: this.currentAgent.id,
-          nodes: this.graphNodes,
-          links: this.graphLinks,
           params: this.workflowParams
         };
 
@@ -1046,9 +1039,17 @@ export default {
           positionX: Math.round(this.editingNode.x || 0),
           positionY: Math.round(this.editingNode.y || 0),
           yamlConfig: this.editingNode.yamlConfig || '',
-          config: JSON.stringify({
-            ...this.editingNode.config,
-            llmConfig: this.editingNode.llmConfig
+          config: JSON.stringify(this.editingNode.config || {}),
+          llmConfig: JSON.stringify(this.editingNode.llmConfig || {
+            model: 'gpt-3.5-turbo',
+            systemPrompt: '',
+            userPrompt: '',
+            temperature: 0.7,
+            maxTokens: 1000,
+            inputVariables: []
+          }),
+          startConfig: JSON.stringify(this.editingNode.startConfig || {
+            inputVariables: []
           }),
           isFixed: this.editingNode.isFixed || false
         };
@@ -1824,10 +1825,10 @@ export default {
 }
 
 .input-variables {
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   padding: 12px;
-  background: white;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .variable-item {
@@ -1849,6 +1850,11 @@ export default {
 .variable-value {
   flex: 1;
   min-width: 120px;
+}
+
+.variable-desc {
+  flex: 2;
+  min-width: 150px;
 }
 
 .variable-item .btn {

@@ -40,17 +40,25 @@ public class WorkflowStateMachine {
         activeWorkflows.put(executionId, context);
         
         try {
+            // 从数据库查询节点和连线数据
+            List<AgentNode> nodes = agentNodeMapper.findByAgentId(request.getAgentId());
+            List<AgentLink> links = agentLinkMapper.findByAgentId(request.getAgentId());
+            
+            if (nodes.isEmpty()) {
+                throw new RuntimeException("代理没有可执行的工作流节点");
+            }
+            
             // 验证工作流
-            validateWorkflow(request);
+            validateWorkflow(nodes, links);
             
             // 查找开始节点
-            AgentNode startNode = findStartNode(request.getNodes());
+            AgentNode startNode = findStartNode(nodes);
             if (startNode == null) {
                 throw new RuntimeException("工作流必须包含一个开始节点");
             }
             
             // 执行工作流
-            return executeNodes(context, startNode);
+            return executeNodes(context, startNode, nodes, links);
             
         } catch (Exception e) {
             log.error("Workflow execution failed", e);
@@ -73,35 +81,46 @@ public class WorkflowStateMachine {
     /**
      * 验证工作流
      */
-    private void validateWorkflow(WorkflowExecutionRequest request) {
-        if (request.getNodes() == null || request.getNodes().isEmpty()) {
+    private void validateWorkflow(List<AgentNode> nodes, List<AgentLink> links) {
+        if (nodes == null || nodes.isEmpty()) {
             throw new RuntimeException("工作流不能为空");
         }
         
         // 检查是否有且仅有一个开始节点
-        long startNodeCount = request.getNodes().stream()
+        long startNodeCount = nodes.stream()
                 .filter(node -> "START".equals(node.getType()))
                 .count();
         if (startNodeCount != 1) {
             throw new RuntimeException("工作流必须有且仅有一个开始节点");
+        }
+        
+        // 验证连线有效性
+        for (AgentLink link : links) {
+            boolean sourceExists = nodes.stream()
+                    .anyMatch(node -> node.getId().equals(link.getSourceNodeId()));
+            boolean targetExists = nodes.stream()
+                    .anyMatch(node -> node.getId().equals(link.getTargetNodeId()));
+            
+            if (!sourceExists || !targetExists) {
+                throw new RuntimeException("工作流连线包含无效的节点ID");
+            }
         }
     }
     
     /**
      * 查找开始节点
      */
-    private AgentNode findStartNode(List<WorkflowExecutionRequest.WorkflowNodeDTO> nodes) {
+    private AgentNode findStartNode(List<AgentNode> nodes) {
         return nodes.stream()
                 .filter(node -> "START".equals(node.getType()))
                 .findFirst()
-                .map(this::convertToAgentNode)
                 .orElse(null);
     }
     
     /**
      * 执行节点
      */
-    private WorkflowExecutionResponse executeNodes(WorkflowContext context, AgentNode currentNode) {
+    private WorkflowExecutionResponse executeNodes(WorkflowContext context, AgentNode currentNode, List<AgentNode> nodes, List<AgentLink> links) {
         List<WorkflowExecutionResponse.ExecutionStep> steps = new ArrayList<>();
         Map<String, Object> finalResult = new HashMap<>();
         
@@ -129,7 +148,7 @@ public class WorkflowStateMachine {
             }
             
             // 查找下一个节点
-            node = findNextNode(node, context.getRequest().getLinks(), context);
+            node = findNextNode(node, nodes, links);
         }
         
         return WorkflowExecutionResponse.builder()
@@ -224,8 +243,7 @@ public class WorkflowStateMachine {
     private Map<String, Object> executeLLMNode(WorkflowContext context, AgentNode node, Map<String, Object> input) {
         try {
             // 解析节点配置
-            Map<String, Object> config = objectMapper.readValue(node.getConfig(), Map.class);
-            Map<String, Object> llmConfig = (Map<String, Object>) config.get("llmConfig");
+            Map<String, Object> llmConfig = objectMapper.readValue(node.getLlmConfig(), Map.class);
             
             if (llmConfig == null) {
                 throw new RuntimeException("LLM节点配置不能为空");
@@ -313,43 +331,24 @@ public class WorkflowStateMachine {
     /**
      * 查找下一个节点
      */
-    private AgentNode findNextNode(AgentNode currentNode, List<WorkflowExecutionRequest.WorkflowLinkDTO> links, WorkflowContext context) {
+    private AgentNode findNextNode(AgentNode currentNode, List<AgentNode> nodes, List<AgentLink> links) {
         return links.stream()
                 .filter(link -> link.getSourceNodeId().equals(currentNode.getId()))
                 .findFirst()
-                .map(link -> findNodeById(link.getTargetNodeId(), context))
+                .map(link -> findNodeById(link.getTargetNodeId(), nodes))
                 .orElse(null);
     }
     
     /**
      * 根据ID查找节点
      */
-    private AgentNode findNodeById(Long nodeId, WorkflowContext context) {
-        // 从当前请求的节点中查找
-        if (context != null && context.getRequest() != null) {
-            return context.getRequest().getNodes().stream()
-                    .filter(node -> node.getId().equals(nodeId))
-                    .findFirst()
-                    .map(this::convertToAgentNode)
-                    .orElse(null);
-        }
-        return null;
+    private AgentNode findNodeById(Long nodeId, List<AgentNode> nodes) {
+        return nodes.stream()
+                .filter(node -> node.getId().equals(nodeId))
+                .findFirst()
+                .orElse(null);
     }
     
-    /**
-     * 转换为AgentNode
-     */
-    private AgentNode convertToAgentNode(WorkflowExecutionRequest.WorkflowNodeDTO dto) {
-        AgentNode node = new AgentNode();
-        node.setId(dto.getId());
-        node.setName(dto.getName());
-        node.setType(dto.getType());
-        node.setPositionX(dto.getPositionX());
-        node.setPositionY(dto.getPositionY());
-        node.setConfig(dto.getConfig());
-        node.setYamlConfig(dto.getYamlConfig());
-        return node;
-    }
     
     /**
      * 工作流上下文

@@ -127,13 +127,11 @@ public class AgentLinkServiceImpl implements AgentLinkService {
     }
     
     @Override
-    @Transactional
     public void deleteLinksByAgentId(Long agentId) {
         agentLinkMapper.deleteByAgentId(agentId);
     }
     
     @Override
-    @Transactional
     public void deleteLinksByNodeId(Long nodeId) {
         agentLinkMapper.deleteByNodeId(nodeId);
     }

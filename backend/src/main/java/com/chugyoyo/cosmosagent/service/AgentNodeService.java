@@ -13,8 +13,6 @@ public interface AgentNodeService {
     AgentNodeDTO saveUpdateNode(AgentNodeDTO dto);
 
     void deleteNode(Long id);
-    
-    AgentNodeDTO updateNodeYaml(Long id, String yamlConfig);
 
     void saveUpdateLink(AgentLinkDTO dto);
 }

@@ -31,7 +31,7 @@ export const configurationApi = {
   deleteConfiguration: (id: number) => api.delete<ApiResponse<void>>('/configurations/deleteConfiguration', {
     params: { id }
   }),
-  testConnection: (provider: string) => api.post<ApiResponse<any>>('/configurations/testConnectionByProvider', {
+  testConnection: (provider: string) => api.get<ApiResponse<any>>('/configurations/testConnectionByProvider', {
     params: { provider }
   })
 }

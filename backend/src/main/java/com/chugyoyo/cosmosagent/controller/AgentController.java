@@ -70,14 +70,8 @@ public class AgentController {
         return ApiResp.success(created);
     }
 
-    @PutMapping("/nodes/{id}/updateNodeYaml")
-    public ApiResp<AgentNodeDTO> updateNodeYaml(@PathVariable Long id, @RequestBody String yamlConfig) {
-        AgentNodeDTO updated = nodeService.updateNodeYaml(id, yamlConfig);
-        return ApiResp.success(updated);
-    }
-
-    @DeleteMapping("/nodes/{id}/deleteNode")
-    public ApiResp<Void> deleteNode(@PathVariable Long id) {
+    @DeleteMapping("/deleteNode")
+    public ApiResp<Void> deleteNode(@RequestParam("nodeId") Long id) {
         nodeService.deleteNode(id);
         return ApiResp.success();
     }

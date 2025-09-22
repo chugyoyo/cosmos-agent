@@ -15,19 +15,19 @@ public interface AgentLinkMapper extends BaseMapper<AgentLink> {
     /**
      * 根据代理ID查询所有连线
      */
-    @Select("SELECT * FROM agent_link WHERE agent_id = #{agentId} ORDER BY sort_order ASC, created_at ASC")
+    @Select("SELECT * FROM agent_link WHERE agent_id = #{agentId} ORDER BY created_at ASC")
     List<AgentLink> findByAgentId(@Param("agentId") Long agentId);
     
     /**
      * 根据源节点ID查询所有出线连线
      */
-    @Select("SELECT * FROM agent_link WHERE source_node_id = #{sourceNodeId} ORDER BY sort_order ASC")
+    @Select("SELECT * FROM agent_link WHERE source_node_id = #{sourceNodeId}")
     List<AgentLink> findBySourceNodeId(@Param("sourceNodeId") Long sourceNodeId);
     
     /**
      * 根据目标节点ID查询所有入线连线
      */
-    @Select("SELECT * FROM agent_link WHERE target_node_id = #{targetNodeId} ORDER BY sort_order ASC")
+    @Select("SELECT * FROM agent_link WHERE target_node_id = #{targetNodeId}")
     List<AgentLink> findByTargetNodeId(@Param("targetNodeId") Long targetNodeId);
     
     /**

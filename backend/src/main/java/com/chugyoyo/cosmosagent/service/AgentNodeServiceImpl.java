@@ -52,20 +52,6 @@ public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode
         // 删除节点
         agentNodeMapper.deleteById(id);
     }
-    
-    @Override
-    @Transactional
-    public AgentNodeDTO updateNodeYaml(Long id, String yamlConfig) {
-        AgentNode node = agentNodeMapper.selectById(id);
-        if (node == null) {
-            throw new RuntimeException("代理节点不存在");
-        }
-        
-        node.setYamlConfig(yamlConfig);
-        node.setUpdatedAt(LocalDateTime.now());
-        agentNodeMapper.updateById(node);
-        return convertToDTO(node);
-    }
 
     @Override
     public void saveUpdateLink(AgentLinkDTO dto) {
