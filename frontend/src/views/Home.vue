@@ -4,54 +4,45 @@
     <div class="hero-section">
       <div class="hero-content">
         <div class="hero-text">
+          <div class="hero-badge">
+            <el-icon><Star /></el-icon>
+            <span>新一代 AI Agent 平台</span>
+          </div>
           <h1 class="hero-title">
             <span class="gradient-text">cosmos-agent</span>
             <span class="subtitle">智宙</span>
           </h1>
           <p class="hero-description">
-            AI Agent 智能机器人运行与编排平台
+            企业级 AI Agent 智能机器人运行与编排平台<br>
+            让 AI 更智能，让工作更高效
           </p>
-          <div class="hero-actions">
-            <el-button type="primary" size="large" @click="router.push('/agent')">
-              <el-icon></el-icon>
-              开始使用
-            </el-button>
-            <el-button size="large" @click="router.push('/configurations/getAllConfigurations')">
-              <el-icon><Setting /></el-icon>
-              配置模型
-            </el-button>
-          </div>
         </div>
       </div>
     </div>
 
-    <!-- Features Section -->
-    <div class="features-section">
-      <div class="section-header">
-        <h2>核心功能</h2>
-        <p>强大的 AI Agent 管理与编排能力</p>
-      </div>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">
-            <el-icon><Setting /></el-icon>
+    <!-- Quick Start Section -->
+    <div class="quick-start-section">
+      <div class="steps-container">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>配置 AI 模型</h3>
+            <p>在设置页面配置您的 AI 大模型 API Key</p>
           </div>
-          <h3>模型配置</h3>
-          <p>支持多种 AI 大模型接入，包括 OpenAI、Azure、阿里云通义千问、智谱 AI、百度千帆等</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <el-icon></el-icon>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>创建 Agent</h3>
+            <p>通过可视化界面创建和编排您的 AI Agent</p>
           </div>
-          <h3>智能工程师</h3>
-          <p>管理和部署 AI Agent，支持运行状态监控、调用次数统计、日志信息展示</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <el-icon><ChatDotRound /></el-icon>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>开始对话</h3>
+            <p>与您的 Agent 进行智能对话交互</p>
           </div>
-          <h3>智能对话</h3>
-          <p>与 AI Agent 进行实时对话交互，支持流式响应</p>
         </div>
       </div>
     </div>
@@ -140,65 +131,10 @@
         </div>
       </div>
     </div>
-
-    <!-- Quick Start Section -->
-    <div class="quick-start-section">
-      <div class="section-header">
-        <h2>快速开始</h2>
-        <p>简单的步骤，快速搭建您的 AI Agent 平台</p>
-      </div>
-      <div class="steps-container">
-        <div class="step">
-          <div class="step-number">1</div>
-          <div class="step-content">
-            <h3>配置 AI 模型</h3>
-            <p>在设置页面配置您的 AI 大模型 API Key</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <div class="step-content">
-            <h3>创建 Agent</h3>
-            <p>通过可视化界面创建和编排您的 AI Agent</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <div class="step-content">
-            <h3>开始对话</h3>
-            <p>与您的 Agent 进行智能对话交互</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Footer -->
     <div class="home-footer">
-      <div class="footer-content">
-        <div class="footer-section">
-          <h3>cosmos-agent 智宙</h3>
-          <p>AI Agent 智能机器人运行与编排平台</p>
-        </div>
-        <div class="footer-section">
-          <h3>快速链接</h3>
-          <div class="footer-links">
-            <a href="#" @click="router.push('/agent')">智能工程师</a>
-            <a href="#" @click="router.push('/configurations/getAllConfigurations')">配置设置</a>
-            <a href="#" @click="router.push('/chat')">对话界面</a>
-          </div>
-        </div>
-        <div class="footer-section">
-          <h3>技术支持</h3>
-          <p>基于现代化的技术栈构建</p>
-          <div class="tech-tags">
-            <span class="tech-tag">Vue 3</span>
-            <span class="tech-tag">Spring Boot</span>
-            <span class="tech-tag">PostgreSQL</span>
-          </div>
-        </div>
-      </div>
       <div class="footer-bottom">
-        <p>&copy; 2024 cosmos-agent 智宙. All rights reserved.</p>
+        <p>&copy; 2025 cosmos-agent 智宙. All rights reserved.</p>
       </div>
     </div>
   </div>
@@ -208,6 +144,14 @@
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
+// 滚动到演示区域
+const scrollToDemo = () => {
+  const demoSection = document.querySelector('.use-cases-section')
+  if (demoSection) {
+    demoSection.scrollIntoView({ behavior: 'smooth' })
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -226,9 +170,47 @@ const router = useRouter()
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 60px;
   align-items: center;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 8px 16px;
+  border-radius: 20px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hero-stats {
+  display: flex;
+  gap: 40px;
+  margin: 30px 0;
+  justify-content: center;
+}
+
+.stat-item {
+  text-align: center;
+  
+  .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+  }
+  
+  .stat-label {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+  }
 }
 
 .hero-title {
@@ -320,6 +302,62 @@ const router = useRouter()
   50% { transform: translateY(-20px); }
 }
 
+// 产品特色区域
+.highlights-section {
+  background: #f8fafc;
+  padding: 80px 20px;
+}
+
+.highlights-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+}
+
+.highlight-card {
+  text-align: center;
+  padding: 30px 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.highlight-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  
+  .el-icon {
+    font-size: 1.5rem;
+    color: white;
+  }
+}
+
+.highlight-card h3 {
+  font-size: 1.3rem;
+  color: #1a202c;
+  margin-bottom: 12px;
+}
+
+.highlight-card p {
+  color: #718096;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
 .features-section {
   background: white;
   padding: 80px 20px;
@@ -387,6 +425,96 @@ const router = useRouter()
 .feature-card p {
   color: #718096;
   line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.feature-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tag {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+// 使用场景区域
+.use-cases-section {
+  background: white;
+  padding: 80px 20px;
+}
+
+.use-cases-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+}
+
+.use-case-card {
+  background: #f8fafc;
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid #e2e8f0;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    background: white;
+  }
+}
+
+.use-case-icon {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  
+  .el-icon {
+    font-size: 1.8rem;
+    color: white;
+  }
+}
+
+.use-case-card h3 {
+  font-size: 1.4rem;
+  color: #1a202c;
+  margin-bottom: 12px;
+}
+
+.use-case-card p {
+  color: #718096;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.use-case-features {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  
+  span {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
 }
 
 .tech-stack-section {
@@ -580,6 +708,31 @@ const router = useRouter()
   
   .hero-title {
     font-size: 3rem;
+  }
+  
+  .hero-stats {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .hero-actions {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .highlights-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .use-cases-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
   
   .tech-stack-container {
