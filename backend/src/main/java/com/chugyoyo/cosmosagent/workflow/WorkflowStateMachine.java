@@ -279,6 +279,7 @@ public class WorkflowStateMachine {
             output.put("nodeName", node.getName());
             output.put("model", model);
             output.put("response", response.getContent());
+            output.put("text", response.getContent()); // 添加text字段，默认使用LLM响应内容
             output.put("metadata", response.getMetadata());
             output.put("timestamp", System.currentTimeMillis());
             
