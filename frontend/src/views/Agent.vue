@@ -130,8 +130,8 @@
     </div>
 
     <!-- 节点编辑模态框 -->
-    <div v-if="showNodeModal" class="modal-overlay" @click="closeNodeModal">
-      <div class="modal-content" @click.stop>
+    <div v-if="showNodeModal" class="modal-overlay">
+      <div class="modal-content">
         <div class="modal-header">
           <h3>编辑节点 - {{ selectedNode?.name }}</h3>
           <button @click="closeNodeModal" class="close-btn">&times;</button>
@@ -470,6 +470,8 @@ export default {
       },
       simulation: null,
       zoom: null,
+      svg: null, // 保存SVG元素引用
+      resizeTimeout: null, // 防抖定时器
       d3Data: null,
       nextNodeId: 1,
       showRunDrawer: false,
@@ -504,6 +506,11 @@ export default {
   beforeUnmount() {
     this.destroyGraph();
     window.removeEventListener('resize', this.handleResize);
+    
+    // 清理防抖定时器
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+    }
   },
   methods: {
     async loadAgentById(agentId) {
@@ -549,6 +556,11 @@ export default {
       // router
       this.$router.push({name: 'AgentDetail', params: {id: agent.id}});
       await this.loadAgentNodes(agent.id);
+      
+      // Agent切换后延迟更新SVG尺寸，确保DOM已渲染
+      setTimeout(() => {
+        this.updateSvgSize();
+      }, 50);
     },
 
     async deleteAgent(agent) {
@@ -816,13 +828,13 @@ export default {
       }
 
       // 创建SVG容器
-      const svg = d3.select(container)
+      this.svg = d3.select(container)
           .append("svg")
           .attr("width", width)
           .attr("height", height);
 
       // 创建箭头标记
-      svg.append("defs").append("marker")
+      this.svg.append("defs").append("marker")
           .attr("id", "arrow")
           .attr("viewBox", "0 -5 10 10")
           .attr("refX", 8)
@@ -835,7 +847,7 @@ export default {
           .attr("fill", "#666");
 
       // 创建容器组
-      const g = svg.append("g");
+      const g = this.svg.append("g");
 
       // 添加画布拖拽功能
       const zoom = d3.zoom()
@@ -844,7 +856,7 @@ export default {
             g.attr("transform", event.transform);
           });
 
-      svg.call(zoom);
+      this.svg.call(zoom);
 
       // 保存zoom实例以便后续使用
       this.zoom = zoom;
@@ -874,7 +886,67 @@ export default {
           .force("x", d3.forceX(d => d.fx || width / 2).strength(d => d.fx ? 0 : 0.05))
           .force("y", d3.forceY(d => d.fy || height / 2).strength(d => d.fy ? 0 : 0.05));
 
-      // 创建节点组
+      // 创建连线组（先渲染连线，让节点在连线上面）
+      const linkGroup = g.append("g")
+          .selectAll("g")
+          .data(this.graphLinks)
+          .enter()
+          .append("g");
+
+      // 添加连线
+      linkGroup.append("path")
+          .attr("stroke", d => this.getLinkColor(d.type))
+          .attr("stroke-opacity", 0.8)
+          .attr("stroke-width", 2)
+          .attr("fill", "transparent")
+          .attr("marker-end", "url(#arrow)")
+          .attr("class", "link-line")
+          .attr("d", d => this.calculateLinkPath(d.source, d.target))
+          .on("click", (event, d) => {
+            event.stopPropagation();
+            vm.handleLinkClick(d);
+          });
+
+      // 添加关系文本（在连线上）
+      const linkLabels = linkGroup.append("text")
+          .attr("text-anchor", "middle")
+          .attr("dy", -5)
+          .attr("fill", "#303133")
+          .attr("font-size", "12px")
+          .attr("class", "relation-label clickable")
+          .text(d => d.name || d.type)
+          .on("click", (event, d) => {
+            event.stopPropagation();
+            vm.handleLinkClick(d);
+          });
+
+      // 为关系文本添加背景
+      linkLabels.each(function (d) {
+        const bbox = this.getBBox();
+        const padding = 2;
+        const parent = this.parentElement;
+        if (parent) {
+          d3.select(parent)
+              .insert("rect", "text")
+              .attr("x", bbox.x - padding)
+              .attr("y", bbox.y - padding)
+              .attr("width", bbox.width + 2 * padding)
+              .attr("height", bbox.height + 2 * padding)
+              .attr("fill", "white")
+              .attr("fill-opacity", 0.7)
+              .attr("rx", 3)
+              .attr("ry", 3)
+              .attr("class", "relation-label-bg clickable")
+              .style("cursor", "pointer")
+              .style("pointer-events", "all")
+              .on("click", (event) => {
+                event.stopPropagation();
+                vm.handleLinkClick(d);
+              });
+        }
+      });
+
+      // 创建节点组（后渲染节点，让节点在连线上面）
       const nodes = g.append("g")
           .selectAll("g")
           .data(this.graphNodes)
@@ -958,65 +1030,7 @@ export default {
             vm.handleNodeClick(d);
           });
 
-      // 创建连线组
-      const linkGroup = g.append("g")
-          .selectAll("g")
-          .data(this.graphLinks)
-          .enter()
-          .append("g");
-
-      // 添加连线
-      linkGroup.append("path")
-          .attr("stroke", d => this.getLinkColor(d.type))
-          .attr("stroke-opacity", 0.8)
-          .attr("stroke-width", 2)
-          .attr("fill", "transparent")
-          .attr("marker-end", "url(#arrow)")
-          .attr("class", "link-line")
-          .attr("d", d => this.calculateLinkPath(d.source, d.target))
-          .on("click", (event, d) => {
-            event.stopPropagation();
-            vm.handleLinkClick(d);
-          });
-
-      // 添加关系文本（在连线上）
-      const linkLabels = linkGroup.append("text")
-          .attr("text-anchor", "middle")
-          .attr("dy", -5)
-          .attr("fill", "#303133")
-          .attr("font-size", "12px")
-          .attr("class", "relation-label clickable")
-          .text(d => d.name || d.type)
-          .on("click", (event, d) => {
-            event.stopPropagation();
-            vm.handleLinkClick(d);
-          });
-
-      // 为关系文本添加背景
-      linkLabels.each(function (d) {
-        const bbox = this.getBBox();
-        const padding = 2;
-        const parent = this.parentElement;
-        if (parent) {
-          d3.select(parent)
-              .insert("rect", "text")
-              .attr("x", bbox.x - padding)
-              .attr("y", bbox.y - padding)
-              .attr("width", bbox.width + 2 * padding)
-              .attr("height", bbox.height + 2 * padding)
-              .attr("fill", "white")
-              .attr("fill-opacity", 0.8)
-              .attr("rx", 2)
-              .attr("ry", 2)
-              .attr("class", "relation-label-bg clickable")
-              .style("cursor", "pointer")
-              .on("click", (event) => {
-                event.stopPropagation();
-                vm.handleLinkClick(d);
-              });
-        }
-      });
-
+  
       // 更新力导向图的tick函数
       this.simulation.on("tick", () => {
         // 更新连线位置
@@ -1092,10 +1106,21 @@ export default {
 
     // 处理窗口大小变化
     handleResize() {
-      if (this.$refs.canvas && this.graphNodes && this.graphNodes.length > 0) {
-        this.initGraph();
+      // 防抖处理，避免频繁更新
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout);
       }
-      this.adjustToolbarPosition();
+      
+      this.resizeTimeout = setTimeout(() => {
+        // 优先更新SVG尺寸，避免重新初始化整个图表
+        if (this.svg && this.$refs.canvas) {
+          this.updateSvgSize();
+        } else if (this.$refs.canvas && this.graphNodes && this.graphNodes.length > 0) {
+          // 如果SVG不存在但有节点数据，重新初始化
+          this.initGraph();
+        }
+        this.adjustToolbarPosition();
+      }, 100); // 100ms 防抖延迟
     },
 
     // 调整工具栏位置以避免被遮挡
@@ -1130,6 +1155,27 @@ export default {
       }
     },
 
+    // 更新SVG尺寸
+    updateSvgSize() {
+      if (!this.svg || !this.$refs.canvas) return;
+      
+      const container = this.$refs.canvas;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      if (!width || !height) {
+        console.warn('图表容器尺寸无效');
+        return;
+      }
+      
+      // 动态更新SVG尺寸
+      this.svg
+        .attr("width", width)
+        .attr("height", height);
+        
+      console.log(`SVG尺寸已更新: ${width}x${height}`);
+    },
+
     // 销毁图表
     destroyGraph() {
       if (this.simulation) {
@@ -1143,6 +1189,7 @@ export default {
           console.warn('销毁图表时出错:', error);
         }
       }
+      this.svg = null;
     },
 
     createNewAgent() {
@@ -1653,15 +1700,14 @@ export default {
     },
 
     updateZoom() {
-      if (this.$refs.canvas) {
-        const svg = d3.select(this.$refs.canvas).select('svg');
-        svg.transition().duration(300).attr('transform', `scale(${this.zoomLevel})`);
+      if (this.svg) {
+        this.svg.transition().duration(300).attr('transform', `scale(${this.zoomLevel})`);
       }
     },
 
     fitToView() {
       // 适应视图
-      if (this.$refs.canvas && this.graphNodes.length > 0) {
+      if (this.svg && this.graphNodes.length > 0) {
         const container = this.$refs.canvas;
         const width = container.clientWidth;
         const height = container.clientHeight;
@@ -1687,8 +1733,7 @@ export default {
         const centerY = (minY + maxY) / 2;
 
         this.zoomLevel = scale;
-        const svg = d3.select(this.$refs.canvas).select('svg');
-        svg.transition().duration(500)
+        this.svg.transition().duration(500)
             .attr('transform', `translate(${width / 2 - centerX * scale}, ${height / 2 - centerY * scale}) scale(${scale})`);
       }
     },
@@ -2579,9 +2624,11 @@ h3 {
 
   .relation-label-bg {
     cursor: pointer;
+    pointer-events: all;
+    mix-blend-mode: normal;
 
     &:hover {
-      fill-opacity: 1 !important;
+      fill-opacity: 0.9 !important;
     }
 
     &.highlighted {

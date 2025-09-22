@@ -13,7 +13,6 @@
           :aria-modal="true"
           :aria-labelledby="titleId"
           :aria-describedby="contentId"
-          @click.stop
         >
           <!-- Header -->
           <div v-if="showHeader" class="modal-header">
