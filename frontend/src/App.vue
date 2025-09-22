@@ -627,7 +627,7 @@ const currentPage = computed(() => {
 // 页面内容区域
 .page-content {
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   background: var(--background-color);
   padding: 0;
   

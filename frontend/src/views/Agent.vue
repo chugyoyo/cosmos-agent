@@ -1,106 +1,36 @@
 <template>
   <div class="agent-page">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-content">
-        <div class="header-left">
-          <h1 class="page-title">Agent 管理</h1>
-          <p class="page-description">创建和管理您的 AI Agent 工作流</p>
-        </div>
-        <div class="header-actions">
-          <el-button type="primary" size="large" @click="createNewAgent">
-            <el-icon>
-              <Plus/>
-            </el-icon>
-            新建 Agent
-          </el-button>
-        </div>
+    <!-- 顶部操作栏 -->
+    <div class="top-bar">
+      <div class="agent-selector">
+        <el-select v-model="currentAgent" placeholder="选择 Agent" @change="selectAgent" size="large">
+          <el-option
+              v-for="agent in agents"
+              :key="agent.id"
+              :label="agent.name"
+              :value="agent"
+          >
+            <div class="agent-option">
+              <span class="agent-initial">{{ getAgentInitial(agent.name) }}</span>
+              <span class="agent-name">{{ agent.name }}</span>
+            </div>
+          </el-option>
+        </el-select>
+      </div>
+      <div class="top-actions">
+        <el-button type="primary" size="large" @click="createNewAgent">
+          <el-icon>
+            <Plus/>
+          </el-icon>
+          新建 Agent
+        </el-button>
       </div>
     </div>
 
     <!-- 主内容区域 -->
     <div class="agent-layout">
-      <!-- 左侧 Agent 列表 -->
-      <aside class="agent-sidebar" :class="{ 'collapsed': agentListCollapsed }">
-        <div class="sidebar-header">
-          <h3 v-show="!agentListCollapsed">Agent 列表</h3>
-          <div class="search-box" v-show="!agentListCollapsed">
-            <el-input
-                v-model="searchQuery"
-                placeholder="搜索 Agent..."
-                :prefix-icon="Search"
-                clearable
-            />
-          </div>
-          <button class="collapse-btn" @click="toggleAgentList">
-            <el-icon>
-              <ArrowLeft v-if="!agentListCollapsed"/>
-              <ArrowRight v-else/>
-            </el-icon>
-          </button>
-        </div>
-
-        <div class="agent-list">
-          <div
-              v-for="agent in filteredAgents"
-              :key="agent.id"
-              class="agent-card"
-              :class="{ active: currentAgent?.id === agent.id, 'collapsed': agentListCollapsed }"
-              @click="selectAgent(agent)"
-          >
-            <!-- 收起状态：只显示首字母头像 -->
-            <div v-if="agentListCollapsed" class="agent-avatar-collapsed">
-              {{ getAgentInitial(agent.name) }}
-            </div>
-
-            <!-- 展开状态：完整信息 -->
-            <div v-else>
-              <div class="agent-card-header">
-                <div class="agent-icon">
-                  <el-icon>
-
-                  </el-icon>
-                </div>
-                <div class="agent-info">
-                  <h4 class="agent-name">{{ agent.name }}</h4>
-                  <p class="agent-desc">{{ agent.description || '暂无描述' }}</p>
-                </div>
-                <div class="agent-actions">
-                  <el-dropdown trigger="click" @click.stop>
-                    <el-button type="text" size="small">
-                      <el-icon>
-                        <MoreFilled/>
-                      </el-icon>
-                    </el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item @click="editAgent(agent)">编辑</el-dropdown-item>
-                        <el-dropdown-item @click="duplicateAgent(agent)">复制</el-dropdown-item>
-                        <el-dropdown-item @click="deleteAgent(agent)" divided>删除</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </div>
-              <div class="agent-stats">
-                <div class="stat-item">
-                  <span class="stat-label">节点</span>
-                  <span class="stat-value">{{ getAgentNodeCount(agent.id) }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">状态</span>
-                  <el-tag :type="getAgentStatusType(agent)" size="small">
-                    {{ getAgentStatus(agent) }}
-                  </el-tag>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
       <!-- 右侧工作流编辑器 -->
-      <main class="workflow-editor">
+      <main class="workflow-editor full-width">
         <div v-if="currentAgent" class="editor-container">
           <!-- 工具栏 -->
           <div class="toolbar">
@@ -172,7 +102,6 @@
                   <el-icon>
                     <FullScreen/>
                   </el-icon>
-                  适应视图
                 </el-button>
               </div>
             </div>
@@ -556,6 +485,11 @@ export default {
     this.loadAgents();
     this.loadAIConfigurations();
     window.addEventListener('resize', this.handleResize);
+    
+    // 延迟检查工具栏位置，确保DOM已渲染
+    setTimeout(() => {
+      this.adjustToolbarPosition();
+    }, 100);
   },
   watch: {
     id: {
@@ -1149,12 +1083,50 @@ export default {
           }
         });
       });
+      
+      // 延迟调整工具栏位置，确保DOM已完全渲染
+      setTimeout(() => {
+        this.adjustToolbarPosition();
+      }, 50);
     },
 
     // 处理窗口大小变化
     handleResize() {
       if (this.$refs.canvas && this.graphNodes && this.graphNodes.length > 0) {
         this.initGraph();
+      }
+      this.adjustToolbarPosition();
+    },
+
+    // 调整工具栏位置以避免被遮挡
+    adjustToolbarPosition() {
+      const toolbar = document.querySelector('.canvas-toolbar');
+      if (!toolbar) return;
+
+      const canvas = this.$refs.canvas;
+      if (!canvas) return;
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      
+      // 计算工具栏需要的空间（工具栏高度 + 安全边距）
+      const toolbarHeight = toolbarRect.height + 32; // 32px 是安全边距
+      const availableSpaceAtBottom = viewportHeight - canvasRect.bottom;
+      
+      // 检查底部是否有足够空间
+      if (availableSpaceAtBottom < toolbarHeight) {
+        // 底部空间不足，移动到顶部
+        toolbar.style.bottom = 'auto';
+        toolbar.style.top = '16px';
+        toolbar.style.left = '16px';
+        toolbar.style.transform = 'none';
+      } else {
+        // 底部空间充足，恢复到中央底部位置
+        toolbar.style.bottom = '16px';
+        toolbar.style.top = 'auto';
+        toolbar.style.left = '50%';
+        toolbar.style.transform = 'translateX(-50%)';
       }
     },
 
@@ -1743,11 +1715,67 @@ export default {
 <style scoped lang="scss">
 // 主页面容器
 .agent-page {
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--background-color);
   overflow: hidden;
+}
+
+// 顶部操作栏
+.top-bar {
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+  .agent-selector {
+    flex: 1;
+    max-width: 400px;
+    
+    .el-select {
+      width: 100%;
+    }
+  }
+
+  .top-actions {
+    .el-button {
+      border-radius: 12px;
+      font-weight: 600;
+      padding: 12px 24px;
+      height: auto;
+    }
+  }
+}
+
+// Agent 下拉选项样式
+.agent-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .agent-initial {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .agent-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color);
+  }
 }
 
 // 主内容区域
@@ -2052,6 +2080,10 @@ h3 {
   flex-direction: column;
   background: var(--background-color);
   overflow: hidden;
+
+  &.full-width {
+    width: 100%;
+  }
 }
 
 // 编辑器容器
@@ -2142,8 +2174,9 @@ h3 {
 // 画布工具栏
 .canvas-toolbar {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: 8px;
   background: rgba(255, 255, 255, 0.9);
@@ -2152,6 +2185,19 @@ h3 {
   border-radius: 8px;
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transition: all 0.3s ease;
+  
+  // 当屏幕高度不足时，自动调整位置
+  @media (max-height: 600px) {
+    bottom: auto;
+    top: 80px;
+  }
+  
+  @media (max-height: 500px) {
+    bottom: auto;
+    top: 16px;
+  }
 
   .zoom-controls,
   .view-controls {
@@ -2213,38 +2259,25 @@ h3 {
 
 // 响应式设计
 @media (max-width: 1024px) {
-  .agent-layout {
+  .top-bar {
     flex-direction: column;
-  }
+    gap: 12px;
+    padding: 16px;
 
-  .agent-sidebar {
-    width: 100%;
-    height: 200px;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color);
-
-    .agent-list {
-      display: flex;
-      gap: 12px;
-      padding: 16px;
-      overflow-x: auto;
-
-      .agent-card {
-        min-width: 280px;
-        margin-bottom: 0;
-      }
+    .agent-selector {
+      max-width: 100%;
+      width: 100%;
     }
   }
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    padding: 16px;
+  .top-bar {
+    padding: 12px 16px;
 
-    .header-content {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 16px;
+    .agent-selector {
+      max-width: 100%;
+      width: 100%;
     }
   }
 
@@ -2269,24 +2302,6 @@ h3 {
   }
 }
 
-// 滚动条样式
-.agent-list::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.agent-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.agent-list::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
-}
-
-.agent-list::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
-}
 
 /* D3图表样式 */
 :deep(svg) {
