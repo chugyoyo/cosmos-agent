@@ -1,0 +1,380 @@
+package com.chugyoyo.cosmosagent.workflow;
+
+import com.chugyoyo.cosmosagent.dto.WorkflowExecutionRequest;
+import com.chugyoyo.cosmosagent.dto.WorkflowExecutionResponse;
+import com.chugyoyo.cosmosagent.entity.AgentNode;
+import com.chugyoyo.cosmosagent.entity.AgentLink;
+import com.chugyoyo.cosmosagent.mapper.AgentNodeMapper;
+import com.chugyoyo.cosmosagent.mapper.AgentLinkMapper;
+import com.chugyoyo.cosmosagent.workflow.llm.LLMStrategy;
+import com.chugyoyo.cosmosagent.workflow.llm.LLMStrategyFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+// Spring State Machine imports removed - using custom state machine implementation
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class WorkflowStateMachine {
+    
+    private final AgentNodeMapper agentNodeMapper;
+    private final AgentLinkMapper agentLinkMapper;
+    private final LLMStrategyFactory llmStrategyFactory;
+    private final ObjectMapper objectMapper;
+    
+    private final Map<String, WorkflowContext> activeWorkflows = new ConcurrentHashMap<>();
+    
+    /**
+     * 执行工作流
+     */
+    public WorkflowExecutionResponse executeWorkflow(WorkflowExecutionRequest request) {
+        String executionId = UUID.randomUUID().toString();
+        WorkflowContext context = new WorkflowContext(executionId, request);
+        
+        activeWorkflows.put(executionId, context);
+        
+        try {
+            // 验证工作流
+            validateWorkflow(request);
+            
+            // 查找开始节点
+            AgentNode startNode = findStartNode(request.getNodes());
+            if (startNode == null) {
+                throw new RuntimeException("工作流必须包含一个开始节点");
+            }
+            
+            // 执行工作流
+            return executeNodes(context, startNode);
+            
+        } catch (Exception e) {
+            log.error("Workflow execution failed", e);
+            context.setState(WorkflowState.FAILED);
+            context.setErrorMessage(e.getMessage());
+            
+            return WorkflowExecutionResponse.builder()
+                    .executionId(executionId)
+                    .agentId(request.getAgentId())
+                    .status("FAILED")
+                    .errorMessage(e.getMessage())
+                    .startTime(context.getStartTime())
+                    .endTime(LocalDateTime.now())
+                    .build();
+        } finally {
+            activeWorkflows.remove(executionId);
+        }
+    }
+    
+    /**
+     * 验证工作流
+     */
+    private void validateWorkflow(WorkflowExecutionRequest request) {
+        if (request.getNodes() == null || request.getNodes().isEmpty()) {
+            throw new RuntimeException("工作流不能为空");
+        }
+        
+        // 检查是否有且仅有一个开始节点
+        long startNodeCount = request.getNodes().stream()
+                .filter(node -> "START".equals(node.getType()))
+                .count();
+        if (startNodeCount != 1) {
+            throw new RuntimeException("工作流必须有且仅有一个开始节点");
+        }
+    }
+    
+    /**
+     * 查找开始节点
+     */
+    private AgentNode findStartNode(List<WorkflowExecutionRequest.WorkflowNodeDTO> nodes) {
+        return nodes.stream()
+                .filter(node -> "START".equals(node.getType()))
+                .findFirst()
+                .map(this::convertToAgentNode)
+                .orElse(null);
+    }
+    
+    /**
+     * 执行节点
+     */
+    private WorkflowExecutionResponse executeNodes(WorkflowContext context, AgentNode currentNode) {
+        List<WorkflowExecutionResponse.ExecutionStep> steps = new ArrayList<>();
+        Map<String, Object> finalResult = new HashMap<>();
+        
+        AgentNode node = currentNode;
+        while (node != null) {
+            WorkflowExecutionResponse.ExecutionStep step = executeNode(context, node);
+            steps.add(step);
+            
+            if ("FAILED".equals(step.getStatus())) {
+                return WorkflowExecutionResponse.builder()
+                        .executionId(context.getExecutionId())
+                        .agentId(context.getRequest().getAgentId())
+                        .status("FAILED")
+                        .currentStep(node.getName())
+                        .steps(steps)
+                        .errorMessage(step.getErrorMessage())
+                        .startTime(context.getStartTime())
+                        .endTime(LocalDateTime.now())
+                        .build();
+            }
+            
+            // 收集结果
+            if (step.getOutput() != null) {
+                finalResult.putAll(step.getOutput());
+            }
+            
+            // 查找下一个节点
+            node = findNextNode(node, context.getRequest().getLinks(), context);
+        }
+        
+        return WorkflowExecutionResponse.builder()
+                .executionId(context.getExecutionId())
+                .agentId(context.getRequest().getAgentId())
+                .status("COMPLETED")
+                .currentStep("Completed")
+                .steps(steps)
+                .result(finalResult)
+                .startTime(context.getStartTime())
+                .endTime(LocalDateTime.now())
+                .build();
+    }
+    
+    /**
+     * 执行单个节点
+     */
+    private WorkflowExecutionResponse.ExecutionStep executeNode(WorkflowContext context, AgentNode node) {
+        LocalDateTime startTime = LocalDateTime.now();
+        String stepId = UUID.randomUUID().toString();
+        
+        try {
+            log.info("Executing node: {} ({})", node.getName(), node.getType());
+            
+            Map<String, Object> input = prepareNodeInput(context, node);
+            Map<String, Object> output = null;
+            
+            if ("START".equals(node.getType())) {
+                output = executeStartNode(context, node, input);
+            } else if ("LLM".equals(node.getType())) {
+                output = executeLLMNode(context, node, input);
+            } else {
+                throw new RuntimeException("不支持的节点类型: " + node.getType());
+            }
+            
+            long duration = java.time.Duration.between(startTime, LocalDateTime.now()).toMillis();
+            
+            return new WorkflowExecutionResponse.ExecutionStep(
+                    stepId,
+                    node.getName(),
+                    node.getType(),
+                    "COMPLETED",
+                    input,
+                    output,
+                    null,
+                    duration,
+                    startTime,
+                    LocalDateTime.now()
+            );
+            
+        } catch (Exception e) {
+            log.error("Node execution failed: " + node.getName(), e);
+            long duration = java.time.Duration.between(startTime, LocalDateTime.now()).toMillis();
+            
+            return new WorkflowExecutionResponse.ExecutionStep(
+                    stepId,
+                    node.getName(),
+                    node.getType(),
+                    "FAILED",
+                    null,
+                    null,
+                    e.getMessage(),
+                    duration,
+                    startTime,
+                    LocalDateTime.now()
+            );
+        }
+    }
+    
+    /**
+     * 执行开始节点
+     */
+    private Map<String, Object> executeStartNode(WorkflowContext context, AgentNode node, Map<String, Object> input) {
+        // 开始节点主要是收集输入参数
+        Map<String, Object> output = new HashMap<>();
+        output.put("nodeType", "START");
+        output.put("nodeName", node.getName());
+        output.put("timestamp", System.currentTimeMillis());
+        
+        // 合并用户输入的参数
+        if (context.getRequest().getParams() != null) {
+            output.putAll(context.getRequest().getParams());
+        }
+        
+        log.info("Start node executed: {}", node.getName());
+        return output;
+    }
+    
+    /**
+     * 执行LLM节点
+     */
+    private Map<String, Object> executeLLMNode(WorkflowContext context, AgentNode node, Map<String, Object> input) {
+        try {
+            // 解析节点配置
+            Map<String, Object> config = objectMapper.readValue(node.getConfig(), Map.class);
+            Map<String, Object> llmConfig = (Map<String, Object>) config.get("llmConfig");
+            
+            if (llmConfig == null) {
+                throw new RuntimeException("LLM节点配置不能为空");
+            }
+            
+            // 构建提示词
+            String systemPrompt = (String) llmConfig.getOrDefault("systemPrompt", "");
+            String userPrompt = (String) llmConfig.getOrDefault("userPrompt", "");
+            String model = (String) llmConfig.getOrDefault("model", "glm-4");
+            
+            // 替换模板变量
+            String finalPrompt = buildPrompt(systemPrompt, userPrompt, input);
+            
+            // 调用LLM策略
+            LLMStrategy strategy = llmStrategyFactory.getStrategy("zhipuai");
+            Map<String, Object> parameters = Map.of(
+                    "model", model,
+                    "temperature", llmConfig.getOrDefault("temperature", 0.7),
+                    "maxTokens", llmConfig.getOrDefault("maxTokens", 1000)
+            );
+            
+            LLMStrategy.LLMResponse response = strategy.execute(finalPrompt, parameters);
+            
+            if (!response.isSuccess()) {
+                throw new RuntimeException(response.getErrorMessage());
+            }
+            
+            Map<String, Object> output = new HashMap<>();
+            output.put("nodeType", "LLM");
+            output.put("nodeName", node.getName());
+            output.put("model", model);
+            output.put("response", response.getContent());
+            output.put("metadata", response.getMetadata());
+            output.put("timestamp", System.currentTimeMillis());
+            
+            log.info("LLM node executed: {}, response length: {}", node.getName(), response.getContent().length());
+            return output;
+            
+        } catch (Exception e) {
+            log.error("LLM node execution failed: " + node.getName(), e);
+            throw new RuntimeException("LLM节点执行失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 构建提示词
+     */
+    private String buildPrompt(String systemPrompt, String userPrompt, Map<String, Object> input) {
+        StringBuilder prompt = new StringBuilder();
+        
+        if (systemPrompt != null && !systemPrompt.trim().isEmpty()) {
+            prompt.append("System: ").append(systemPrompt).append("\n\n");
+        }
+        
+        String processedUserPrompt = userPrompt;
+        if (input != null) {
+            for (Map.Entry<String, Object> entry : input.entrySet()) {
+                processedUserPrompt = processedUserPrompt.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+            }
+        }
+        
+        prompt.append("User: ").append(processedUserPrompt);
+        
+        return prompt.toString();
+    }
+    
+    /**
+     * 准备节点输入
+     */
+    private Map<String, Object> prepareNodeInput(WorkflowContext context, AgentNode node) {
+        Map<String, Object> input = new HashMap<>();
+        
+        // 如果是开始节点，使用用户输入的参数
+        if ("START".equals(node.getType()) && context.getRequest().getParams() != null) {
+            input.putAll(context.getRequest().getParams());
+        }
+        
+        input.put("nodeId", node.getId());
+        input.put("nodeName", node.getName());
+        input.put("nodeType", node.getType());
+        
+        return input;
+    }
+    
+    /**
+     * 查找下一个节点
+     */
+    private AgentNode findNextNode(AgentNode currentNode, List<WorkflowExecutionRequest.WorkflowLinkDTO> links, WorkflowContext context) {
+        return links.stream()
+                .filter(link -> link.getSourceNodeId().equals(currentNode.getId()))
+                .findFirst()
+                .map(link -> findNodeById(link.getTargetNodeId(), context))
+                .orElse(null);
+    }
+    
+    /**
+     * 根据ID查找节点
+     */
+    private AgentNode findNodeById(Long nodeId, WorkflowContext context) {
+        // 从当前请求的节点中查找
+        if (context != null && context.getRequest() != null) {
+            return context.getRequest().getNodes().stream()
+                    .filter(node -> node.getId().equals(nodeId))
+                    .findFirst()
+                    .map(this::convertToAgentNode)
+                    .orElse(null);
+        }
+        return null;
+    }
+    
+    /**
+     * 转换为AgentNode
+     */
+    private AgentNode convertToAgentNode(WorkflowExecutionRequest.WorkflowNodeDTO dto) {
+        AgentNode node = new AgentNode();
+        node.setId(dto.getId());
+        node.setName(dto.getName());
+        node.setType(dto.getType());
+        node.setPositionX(dto.getPositionX());
+        node.setPositionY(dto.getPositionY());
+        node.setConfig(dto.getConfig());
+        node.setYamlConfig(dto.getYamlConfig());
+        return node;
+    }
+    
+    /**
+     * 工作流上下文
+     */
+    public static class WorkflowContext {
+        private final String executionId;
+        private final WorkflowExecutionRequest request;
+        private final LocalDateTime startTime;
+        private WorkflowState state;
+        private String errorMessage;
+        
+        public WorkflowContext(String executionId, WorkflowExecutionRequest request) {
+            this.executionId = executionId;
+            this.request = request;
+            this.startTime = LocalDateTime.now();
+            this.state = WorkflowState.INITIALIZING;
+        }
+        
+        // Getters and Setters
+        public String getExecutionId() { return executionId; }
+        public WorkflowExecutionRequest getRequest() { return request; }
+        public LocalDateTime getStartTime() { return startTime; }
+        public WorkflowState getState() { return state; }
+        public void setState(WorkflowState state) { this.state = state; }
+        public String getErrorMessage() { return errorMessage; }
+        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    }
+}

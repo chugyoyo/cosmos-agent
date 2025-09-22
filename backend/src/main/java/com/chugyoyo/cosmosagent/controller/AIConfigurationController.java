@@ -51,8 +51,8 @@ public class AIConfigurationController {
         return ApiResp.success();
     }
 
-    @PostMapping("/{provider}/testConnectionByProvider")
-    public ApiResp<Map<String, Object>> testConnection(@PathVariable String provider) {
+    @PostMapping("/testConnectionByProvider")
+    public ApiResp<Map<String, Object>> testConnection(@RequestParam String provider) {
         Map<String, Object> result = configurationService.testConnection(provider);
         return ApiResp.success(result);
     }

@@ -4,9 +4,12 @@ import com.chugyoyo.cosmosagent.common.ApiResp;
 import com.chugyoyo.cosmosagent.dto.AgentDTO;
 import com.chugyoyo.cosmosagent.dto.AgentLinkDTO;
 import com.chugyoyo.cosmosagent.dto.AgentNodeDTO;
+import com.chugyoyo.cosmosagent.dto.WorkflowExecutionRequest;
+import com.chugyoyo.cosmosagent.dto.WorkflowExecutionResponse;
 import com.chugyoyo.cosmosagent.service.AgentService;
 import com.chugyoyo.cosmosagent.service.AgentNodeService;
 import com.chugyoyo.cosmosagent.service.AgentLinkService;
+import com.chugyoyo.cosmosagent.workflow.WorkflowStateMachine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +26,7 @@ public class AgentController {
     private final AgentService agentService;
     private final AgentNodeService nodeService;
     private final AgentLinkService linkService;
+    private final WorkflowStateMachine workflowStateMachine;
 
     @GetMapping("/getAllAgents")
     public ApiResp<List<AgentDTO>> getAllAgents() {
@@ -141,5 +145,17 @@ public class AgentController {
                                            @RequestParam Long targetNodeId) {
         boolean exists = linkService.existsLinkBetweenNodes(agentId, sourceNodeId, targetNodeId);
         return ApiResp.success(exists);
+    }
+    
+    // ===== 工作流执行相关 API =====
+    
+    @PostMapping("/executeWorkflow")
+    public ApiResp<WorkflowExecutionResponse> executeWorkflow(@Valid @RequestBody WorkflowExecutionRequest request) {
+        try {
+            WorkflowExecutionResponse response = workflowStateMachine.executeWorkflow(request);
+            return ApiResp.success(response);
+        } catch (Exception e) {
+            return ApiResp.fail("工作流执行失败: " + e.getMessage());
+        }
     }
 }

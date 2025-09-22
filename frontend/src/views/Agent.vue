@@ -29,6 +29,9 @@
               <button @click="addNode" class="btn btn-sm btn-primary">添加节点</button>
               <button @click="startLinkCreation" class="btn btn-sm btn-info">添加连线</button>
               <button @click="clearWorkspace" class="btn btn-sm btn-secondary">清空</button>
+              <button @click="runWorkflow" class="btn btn-sm btn-success" :disabled="!canRunWorkflow">
+                <i class="fas fa-play"></i> 运行
+              </button>
             </div>
           </div>
 
@@ -60,16 +63,30 @@
           <div class="form-group">
             <label>节点类型:</label>
             <select v-model="editingNode.type" class="form-control">
-              <option value="llm">LLM节点</option>
-              <option value="input">输入节点</option>
-              <option value="process">处理节点</option>
-              <option value="output">输出节点</option>
-              <option value="condition">条件节点</option>
+              <option value="START">开始节点</option>
+              <option value="LLM">LLM节点</option>
             </select>
           </div>
           
+          <!-- START节点配置 -->
+          <div v-if="editingNode.type === 'START'" class="start-config">
+            <div class="form-group">
+              <label>输入变量:</label>
+              <div class="input-variables">
+                <div v-for="(variable, index) in editingNode.startConfig.inputVariables" 
+                     :key="index" class="variable-item">
+                  <input v-model="variable.name" placeholder="变量名" class="form-control variable-name">
+                  <input v-model="variable.defaultValue" placeholder="默认值" class="form-control variable-value">
+                  <input v-model="variable.description" placeholder="描述" class="form-control variable-desc">
+                  <button @click="removeStartVariable(index)" class="btn btn-sm btn-danger">删除</button>
+                </div>
+                <button @click="addStartVariable" class="btn btn-sm btn-secondary">添加变量</button>
+              </div>
+            </div>
+          </div>
+          
           <!-- LLM节点特有配置 -->
-          <div v-if="editingNode.type === 'llm'" class="llm-config">
+          <div v-if="editingNode.type === 'LLM'" class="llm-config">
             <div class="form-group">
               <label>模型选择:</label>
               <select v-model="editingNode.llmConfig.model" class="form-control">
@@ -242,6 +259,60 @@
         </div>
       </div>
     </div>
+
+    <!-- 工作流运行抽屉 -->
+    <div v-if="showRunDrawer" class="run-drawer-overlay" @click="closeRunDrawer">
+      <div class="run-drawer" @click.stop>
+        <div class="drawer-header">
+          <h3>工作流运行</h3>
+          <button @click="closeRunDrawer" class="close-btn">&times;</button>
+        </div>
+        <div class="drawer-body">
+          <div v-if="!isRunning && !executionResult">
+            <div class="form-group">
+              <label>工作流参数:</label>
+              <div v-if="startNode && startNode.startConfig" class="workflow-params">
+                <div v-for="(variable, index) in startNode.startConfig.inputVariables" 
+                     :key="index" class="param-item">
+                  <label>{{ variable.name || `参数${index + 1}` }}:</label>
+                  <input v-model="workflowParams[variable.name]" 
+                         :placeholder="variable.description || `请输入${variable.name}`"
+                         class="form-control">
+                </div>
+              </div>
+              <div v-else class="no-params">
+                <p>此工作流没有需要配置的参数</p>
+              </div>
+            </div>
+            <div class="drawer-actions">
+              <button @click="executeWorkflow" class="btn btn-success">
+                <i class="fas fa-play"></i> 开始执行
+              </button>
+              <button @click="closeRunDrawer" class="btn btn-secondary">取消</button>
+            </div>
+          </div>
+          
+          <div v-else-if="isRunning" class="running-status">
+            <div class="spinner"></div>
+            <p>工作流正在执行中...</p>
+            <div class="progress-container">
+              <div class="progress-bar"></div>
+            </div>
+          </div>
+          
+          <div v-else class="execution-result">
+            <h4>执行结果</h4>
+            <div class="result-content">
+              <pre>{{ JSON.stringify(executionResult, null, 2) }}</pre>
+            </div>
+            <div class="drawer-actions">
+              <button @click="resetExecution" class="btn btn-primary">重新运行</button>
+              <button @click="closeRunDrawer" class="btn btn-secondary">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -267,11 +338,14 @@ export default {
       selectedLink: null,
       editingNode: {
         name: '',
-        type: 'llm',
+        type: 'START',
         x: 0,
         y: 0,
         yamlConfig: '',
         config: {},
+        startConfig: {
+          inputVariables: []
+        },
         llmConfig: {
           model: 'gpt-3.5-turbo',
           systemPrompt: '',
@@ -294,6 +368,11 @@ export default {
       simulation: null,
       d3Data: null,
       nextNodeId: 1,
+      showRunDrawer: false,
+      workflowParams: {},
+      isRunning: false,
+      executionResult: null,
+      startNode: null
     };
   },
   mounted() {
@@ -388,11 +467,8 @@ export default {
     // 获取节点颜色
     getNodeColor(type) {
       const colors = {
-        input: '#4CAF50',
-        process: '#2196F3',
-        output: '#FF9800',
-        condition: '#9C27B0',
-        llm: '#673AB7'
+        START: '#4CAF50',
+        LLM: '#673AB7'
       };
       return colors[type] || '#607D8B';
     },
@@ -881,6 +957,59 @@ export default {
       }
     },
 
+    // 工作流运行相关方法
+    runWorkflow() {
+      this.startNode = this.graphNodes.find(node => node.type === 'START');
+      if (!this.startNode) {
+        alert('请先添加开始节点');
+        return;
+      }
+      
+      this.showRunDrawer = true;
+      this.workflowParams = {};
+      this.executionResult = null;
+      this.isRunning = false;
+    },
+
+    closeRunDrawer() {
+      this.showRunDrawer = false;
+      this.isRunning = false;
+      this.executionResult = null;
+    },
+
+    async executeWorkflow() {
+      if (!this.startNode) {
+        alert('开始节点不存在');
+        return;
+      }
+
+      this.isRunning = true;
+      
+      try {
+        const workflowData = {
+          agentId: this.currentAgent.id,
+          nodes: this.graphNodes,
+          links: this.graphLinks,
+          params: this.workflowParams
+        };
+
+        const response = await agentApi.executeWorkflow(workflowData);
+        this.executionResult = response.data.data;
+      } catch (error) {
+        console.error('工作流执行失败:', error);
+        this.executionResult = {
+          error: '工作流执行失败: ' + (error.response?.data?.message || error.message)
+        };
+      } finally {
+        this.isRunning = false;
+      }
+    },
+
+    resetExecution() {
+      this.executionResult = null;
+      this.isRunning = false;
+    },
+
     editNode(node) {
       this.editingNode = {
         ...node,
@@ -1134,6 +1263,12 @@ export default {
         error: '#f5222d'
       };
       return colors[type] || '#666';
+    }
+  },
+  
+  computed: {
+    canRunWorkflow() {
+      return this.graphNodes.length > 0 && this.graphNodes.some(node => node.type === 'START');
     }
   }
 };
@@ -1514,13 +1649,146 @@ export default {
   }
 }
 
-/* LLM配置样式 */
-.llm-config {
-  background: #f8f9fa;
+/* 智宙主题样式 */
+.agent-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+.agent-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.agent-header h2 {
+  color: #ffffff;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sidebar {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar h3 {
+  color: #ffffff;
+  font-weight: 500;
+  margin-top: 0;
+}
+
+.agent-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.agent-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.agent-item.active {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #64b5f6;
+}
+
+.workspace-header {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.workspace-header h3 {
+  color: #ffffff;
+  font-weight: 500;
+  margin: 0;
+}
+
+.canvas-container {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  backdrop-filter: blur(10px);
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, #42a5f5, #1e88e5);
+  border: none;
+}
+
+.btn-success {
+  background: linear-gradient(45deg, #66bb6a, #43a047);
+  border: none;
+}
+
+.btn-info {
+  background: linear-gradient(45deg, #26c6da, #00acc1);
+  border: none;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header h3 {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.form-control {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   border-radius: 8px;
+}
+
+.form-control:focus {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #64b5f6;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* START节点配置样式 */
+.start-config {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(56, 142, 60, 0.1));
+  border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  border: 1px solid #e9ecef;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+/* LLM配置样式 */
+.llm-config {
+  background: linear-gradient(135deg, rgba(103, 58, 183, 0.1), rgba(81, 45, 168, 0.1));
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(103, 58, 183, 0.2);
 }
 
 .llm-config .form-group {
@@ -1587,5 +1855,156 @@ export default {
   flex-shrink: 0;
   padding: 4px 8px;
   font-size: 12px;
+}
+
+/* 工作流运行抽屉样式 */
+.run-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.run-drawer {
+  width: 400px;
+  max-width: 90vw;
+  height: 100%;
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.drawer-header h3 {
+  color: #ffffff;
+  font-weight: 500;
+  margin: 0;
+}
+
+.drawer-body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.workflow-params {
+  margin-bottom: 20px;
+}
+
+.param-item {
+  margin-bottom: 16px;
+}
+
+.param-item label {
+  display: block;
+  color: #ffffff;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.no-params {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 20px;
+}
+
+.drawer-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.running-status {
+  text-align: center;
+  color: #ffffff;
+  padding: 40px 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #64b5f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.progress-container {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #64b5f6, #42a5f5);
+  width: 60%;
+  animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.execution-result {
+  color: #ffffff;
+}
+
+.execution-result h4 {
+  color: #64b5f6;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.result-content {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.result-content pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #64b5f6;
+  font-size: 14px;
+  line-height: 1.5;
 }
 </style>
