@@ -13,29 +13,13 @@
           </p>
           <div class="hero-actions">
             <el-button type="primary" size="large" @click="router.push('/agent')">
-              <el-icon><Robot /></el-icon>
+              <el-icon></el-icon>
               开始使用
             </el-button>
             <el-button size="large" @click="router.push('/configurations/getAllConfigurations')">
               <el-icon><Setting /></el-icon>
               配置模型
             </el-button>
-          </div>
-        </div>
-        <div class="hero-visual">
-          <div class="floating-cards">
-            <div class="card tech-card">
-              <el-icon><Setting /></el-icon>
-              <span>模型配置</span>
-            </div>
-            <div class="card tech-card">
-              <el-icon><Robot /></el-icon>
-              <span>智能工程师</span>
-            </div>
-            <div class="card tech-card">
-              <el-icon><ChatDotRound /></el-icon>
-              <span>智能对话</span>
-            </div>
           </div>
         </div>
       </div>
@@ -57,7 +41,7 @@
         </div>
         <div class="feature-card">
           <div class="feature-icon">
-            <el-icon><Robot /></el-icon>
+            <el-icon></el-icon>
           </div>
           <h3>智能工程师</h3>
           <p>管理和部署 AI Agent，支持运行状态监控、调用次数统计、日志信息展示</p>

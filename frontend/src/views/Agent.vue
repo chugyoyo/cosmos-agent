@@ -1,51 +1,189 @@
 <template>
-  <div class="agent-container">
-    <div class="agent-header">
-      <h2>Agent 管理</h2>
-      <div class="header-actions">
-        <button @click="createNewAgent" class="btn btn-primary">新建代理</button>
+  <div class="agent-page">
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-left">
+          <h1 class="page-title">Agent 管理</h1>
+          <p class="page-description">创建和管理您的 AI Agent 工作流</p>
+        </div>
+        <div class="header-actions">
+          <el-button type="primary" size="large" @click="createNewAgent">
+            <el-icon>
+              <Plus/>
+            </el-icon>
+            新建 Agent
+          </el-button>
+        </div>
       </div>
     </div>
 
-    <div class="agent-content">
-      <div class="sidebar">
-        <h3>代理列表</h3>
+    <!-- 主内容区域 -->
+    <div class="agent-layout">
+      <!-- 左侧 Agent 列表 -->
+      <aside class="agent-sidebar">
+        <div class="sidebar-header">
+          <h3>Agent 列表</h3>
+          <div class="search-box">
+            <el-input
+                v-model="searchQuery"
+                placeholder="搜索 Agent..."
+                :prefix-icon="Search"
+                clearable
+            />
+          </div>
+        </div>
+
         <div class="agent-list">
-          <div v-for="agent in agents" :key="agent.id"
-               class="agent-item"
-               :class="{ active: currentAgent?.id === agent.id }"
-               @click="selectAgent(agent)">
-            <div class="agent-name">{{ agent.name }}</div>
-            <div class="agent-desc">{{ agent.description }}</div>
+          <div
+              v-for="agent in filteredAgents"
+              :key="agent.id"
+              class="agent-card"
+              :class="{ active: currentAgent?.id === agent.id }"
+              @click="selectAgent(agent)"
+          >
+            <div class="agent-card-header">
+              <div class="agent-icon">
+                <el-icon>
+
+                </el-icon>
+              </div>
+              <div class="agent-info">
+                <h4 class="agent-name">{{ agent.name }}</h4>
+                <p class="agent-desc">{{ agent.description || '暂无描述' }}</p>
+              </div>
+              <div class="agent-actions">
+                <el-dropdown trigger="click" @click.stop>
+                  <el-button type="text" size="small">
+                    <el-icon>
+                      <MoreFilled/>
+                    </el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="editAgent(agent)">编辑</el-dropdown-item>
+                      <el-dropdown-item @click="duplicateAgent(agent)">复制</el-dropdown-item>
+                      <el-dropdown-item @click="deleteAgent(agent)" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </div>
+            <div class="agent-stats">
+              <div class="stat-item">
+                <span class="stat-label">节点</span>
+                <span class="stat-value">{{ getAgentNodeCount(agent.id) }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">状态</span>
+                <el-tag :type="getAgentStatusType(agent)" size="small">
+                  {{ getAgentStatus(agent) }}
+                </el-tag>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </aside>
 
-      <div class="main-content">
-        <div v-if="currentAgent" class="agent-workspace">
-          <div class="workspace-header">
-            <h3>{{ currentAgent.name }}</h3>
-            <div class="workspace-actions">
-              <button @click="addNode" class="btn btn-sm btn-primary">添加节点</button>
-              <button @click="startLinkCreation" class="btn btn-sm btn-info">添加连线</button>
-              <button @click="clearWorkspace" class="btn btn-sm btn-secondary">清空</button>
-              <button @click="runWorkflow" class="btn btn-sm btn-success" :disabled="!canRunWorkflow">
-                <i class="fas fa-play"></i> 运行
-              </button>
+      <!-- 右侧工作流编辑器 -->
+      <main class="workflow-editor">
+        <div v-if="currentAgent" class="editor-container">
+          <!-- 工具栏 -->
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="agent-info-header">
+                <h2>{{ currentAgent.name }}</h2>
+                <p>{{ currentAgent.description || '暂无描述' }}</p>
+              </div>
+            </div>
+            <div class="toolbar-right">
+              <div class="toolbar-actions">
+                <el-button-group>
+                  <el-button @click="addNode" type="primary">
+                    <el-icon>
+                      <Plus/>
+                    </el-icon>
+                    添加节点
+                  </el-button>
+                  <el-button @click="startLinkCreation" :type="linkCreationMode ? 'success' : 'default'">
+                    <el-icon>
+                      <Link/>
+                    </el-icon>
+                    {{ linkCreationMode ? '取消连线' : '添加连线' }}
+                  </el-button>
+                </el-button-group>
+                <el-button @click="clearWorkspace" type="warning">
+                  <el-icon>
+                    <Delete/>
+                  </el-icon>
+                  清空
+                </el-button>
+                <el-button @click="runWorkflow" type="success" :disabled="!canRunWorkflow">
+                  <el-icon>
+                    <VideoPlay/>
+                  </el-icon>
+                  运行工作流
+                </el-button>
+              </div>
             </div>
           </div>
 
-          <div class="canvas-container">
-            <div ref="canvas" class="agent-canvas">
-              <!-- D3将在这里动态创建SVG -->
+          <!-- 画布区域 -->
+          <div class="canvas-wrapper">
+            <div ref="canvas" class="workflow-canvas">
+              <!-- D3 将在这里动态创建 SVG -->
+            </div>
+
+            <!-- 画布工具栏 -->
+            <div class="canvas-toolbar">
+              <div class="zoom-controls">
+                <el-button size="small" @click="zoomIn">
+                  <el-icon>
+                    <ZoomIn/>
+                  </el-icon>
+                </el-button>
+                <el-button size="small" @click="zoomOut">
+                  <el-icon>
+                    <ZoomOut/>
+                  </el-icon>
+                </el-button>
+                <el-button size="small" @click="resetZoom">
+                  <el-icon>
+                    <Refresh/>
+                  </el-icon>
+                </el-button>
+              </div>
+              <div class="view-controls">
+                <el-button size="small" @click="fitToView">
+                  <el-icon>
+                    <FullScreen/>
+                  </el-icon>
+                  适应视图
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div v-else class="empty-state">
-          <p>请选择或创建一个代理</p>
+        <!-- 空状态 -->
+        <div v-else class="empty-workspace">
+          <div class="empty-content">
+            <div class="empty-icon">
+              <el-icon size="64">
+                <Connection/>
+              </el-icon>
+            </div>
+            <h3>选择一个 Agent 开始编辑</h3>
+            <p>从左侧列表中选择一个 Agent，或者创建一个新的 Agent 来开始构建您的工作流</p>
+            <el-button type="primary" size="large" @click="createNewAgent">
+              <el-icon>
+                <Plus/>
+              </el-icon>
+              创建新 Agent
+            </el-button>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
 
     <!-- 节点编辑模态框 -->
@@ -67,13 +205,13 @@
               <option value="LLM">LLM</option>
             </select>
           </div>
-          
+
           <!-- START节点配置 -->
           <div v-if="editingNode.type === 'START'" class="start-config">
             <div class="form-group">
               <label>输入变量:</label>
               <div class="input-variables">
-                <div v-for="(variable, index) in editingNode.startConfig.inputVariables" 
+                <div v-for="(variable, index) in (editingNode.startConfig?.inputVariables || [])"
                      :key="index" class="variable-item">
                   <input v-model="variable.name" placeholder="变量名" class="form-control variable-name">
                   <input v-model="variable.defaultValue" placeholder="默认值" class="form-control variable-value">
@@ -84,50 +222,51 @@
               </div>
             </div>
           </div>
-          
+
           <!-- LLM节点特有配置 -->
           <div v-if="editingNode.type === 'LLM'" class="llm-config">
             <div class="form-group">
               <label>模型选择:</label>
-              <select v-model="editingNode.llmConfig.model" class="form-control">
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                <option value="claude-3-opus">Claude 3 Opus</option>
-                <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                <option value="claude-3-haiku">Claude 3 Haiku</option>
+              <select v-model="editingNode.llmConfig.model" class="form-control"
+                      style="color: #ffffff !important; background: #2a2a2a !important;">
+                <option v-for="config in aiConfigurations"
+                        :key="config.id"
+                        :value="config.model"
+                        style="color: #ffffff !important; background: #1a1a1a !important;">
+                  {{ config.provider }} - {{ config.model }}
+                </option>
               </select>
             </div>
-            
+
             <div class="form-group">
               <label>系统提示词 (System Prompt):</label>
               <textarea v-model="editingNode.llmConfig.systemPrompt" class="form-control" rows="4"
                         placeholder="设置系统角色和指示..."></textarea>
             </div>
-            
+
             <div class="form-group">
               <label>用户提示词 (User Prompt):</label>
               <textarea v-model="editingNode.llmConfig.userPrompt" class="form-control" rows="4"
                         placeholder="用户输入的提示词模板..."></textarea>
             </div>
-            
+
             <div class="form-group">
               <label>温度 (Temperature):</label>
-              <input type="range" v-model="editingNode.llmConfig.temperature" 
+              <input type="range" v-model="editingNode.llmConfig.temperature"
                      min="0" max="2" step="0.1" class="form-range">
               <div class="temperature-value">{{ editingNode.llmConfig.temperature }}</div>
             </div>
-            
+
             <div class="form-group">
               <label>最大令牌数 (Max Tokens):</label>
-              <input type="number" v-model="editingNode.llmConfig.maxTokens" 
+              <input type="number" v-model="editingNode.llmConfig.maxTokens"
                      class="form-control" min="1" max="8000">
             </div>
-            
+
             <div class="form-group">
               <label>输入变量:</label>
               <div class="input-variables">
-                <div v-for="(variable, index) in editingNode.llmConfig.inputVariables" 
+                <div v-for="(variable, index) in (editingNode.llmConfig?.inputVariables || [])"
                      :key="index" class="variable-item">
                   <input v-model="variable.name" placeholder="变量名" class="form-control variable-name">
                   <input v-model="variable.defaultValue" placeholder="默认值" class="form-control variable-value">
@@ -136,12 +275,6 @@
                 <button @click="addInputVariable" class="btn btn-sm btn-secondary">添加变量</button>
               </div>
             </div>
-          </div>
-          
-          <div class="form-group">
-            <label>YAML 配置:</label>
-            <textarea v-model="editingNode.yamlConfig" class="form-control yaml-editor" rows="10"
-                      placeholder="输入 YAML 配置..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -152,7 +285,7 @@
       </div>
     </div>
 
-  
+
     <!-- 连线编辑模态框 -->
     <div v-if="showLinkModal" class="modal-overlay" @click="closeLinkModal">
       <div class="modal-content" @click.stop>
@@ -238,10 +371,10 @@
             <div class="form-group">
               <label>工作流参数:</label>
               <div v-if="startNode && startNode.startConfig" class="workflow-params">
-                <div v-for="(variable, index) in startNode.startConfig.inputVariables" 
+                <div v-for="(variable, index) in startNode.startConfig.inputVariables"
                      :key="index" class="param-item">
                   <label>{{ variable.name || `参数${index + 1}` }}:</label>
-                  <input v-model="workflowParams[variable.name]" 
+                  <input v-model="workflowParams[variable.name]"
                          :placeholder="variable.description || `请输入${variable.name}`"
                          class="form-control">
                 </div>
@@ -257,7 +390,7 @@
               <button @click="closeRunDrawer" class="btn btn-secondary">取消</button>
             </div>
           </div>
-          
+
           <div v-else-if="isRunning" class="running-status">
             <div class="spinner"></div>
             <p>工作流正在执行中...</p>
@@ -265,7 +398,7 @@
               <div class="progress-bar"></div>
             </div>
           </div>
-          
+
           <div v-else class="execution-result">
             <h4>执行结果</h4>
             <div class="result-content">
@@ -285,9 +418,35 @@
 <script>
 import * as d3 from 'd3';
 import {agentApi} from '@/services/api';
+import {
+  Plus,
+  Search,
+  MoreFilled,
+  Link,
+  Delete,
+  VideoPlay,
+  ZoomIn,
+  ZoomOut,
+  Refresh,
+  FullScreen,
+  Connection
+} from '@element-plus/icons-vue';
 
 export default {
   name: 'Agent',
+  components: {
+    Plus,
+    Search,
+    MoreFilled,
+    Link,
+    Delete,
+    VideoPlay,
+    ZoomIn,
+    ZoomOut,
+    Refresh,
+    FullScreen,
+    Connection
+  },
   props: {
     id: {
       type: [String, Number],
@@ -298,6 +457,7 @@ export default {
     return {
       agents: [],
       currentAgent: null,
+      aiConfigurations: [],
       graphNodes: [],
       graphLinks: [],
       selectedNode: null,
@@ -307,7 +467,6 @@ export default {
         type: 'START',
         x: 0,
         y: 0,
-        yamlConfig: '',
         config: {},
         startConfig: {
           inputVariables: []
@@ -338,11 +497,14 @@ export default {
       workflowParams: {},
       isRunning: false,
       executionResult: null,
-      startNode: null
+      startNode: null,
+      searchQuery: '',
+      zoomLevel: 1
     };
   },
   mounted() {
     this.loadAgents();
+    this.loadAIConfigurations();
     window.addEventListener('resize', this.handleResize);
   },
   watch: {
@@ -364,7 +526,7 @@ export default {
       try {
         // First load all agents to populate the sidebar
         await this.loadAgents();
-        
+
         // Then find and select the specific agent
         const agent = this.agents.find(a => a.id == agentId);
         if (agent) {
@@ -375,7 +537,7 @@ export default {
         console.error('加载代理失败:', error);
       }
     },
-    
+
     async loadAgents() {
       try {
         const response = await agentApi.getAll();
@@ -386,13 +548,46 @@ export default {
       }
     },
 
+    async loadAIConfigurations() {
+      try {
+        const response = await agentApi.getAIConfigurations();
+        this.aiConfigurations = response.data.data;
+        console.log("loadAIConfigurations done, this.aiConfigurations", this.aiConfigurations);
+      } catch (error) {
+        console.error('加载AI配置失败:', error);
+      }
+    },
+
     async selectAgent(agent) {
       this.currentAgent = agent;
       console.log("agents", this.agents);
       console.log("selectAgent, agent", agent);
       // router
-      this.$router.push({ name: 'AgentDetail', params: { id: agent.id } });
+      this.$router.push({name: 'AgentDetail', params: {id: agent.id}});
       await this.loadAgentNodes(agent.id);
+    },
+
+    async deleteAgent(agent) {
+      if (confirm(`确定要删除代理 "${agent.name}" 吗？此操作不可恢复。`)) {
+        try {
+          await agentApi.deleteAgent(agent.id);
+          // 从列表中移除
+          this.agents = this.agents.filter(a => a.id !== agent.id);
+
+          // 如果删除的是当前选中的代理，清空工作区
+          if (this.currentAgent?.id === agent.id) {
+            this.currentAgent = null;
+            this.graphNodes = [];
+            this.graphLinks = [];
+            this.$router.push({name: 'Agent'});
+          }
+
+          console.log(`代理 "${agent.name}" 删除成功`);
+        } catch (error) {
+          console.error('删除代理失败:', error);
+          alert('删除代理失败，请重试');
+        }
+      }
     },
 
     async loadAgentNodes(agentId) {
@@ -405,7 +600,6 @@ export default {
           type: node.type,
           x: node.positionX,
           y: node.positionY,
-          yamlConfig: node.yamlConfig || '',
           config: node.config ? JSON.parse(node.config) : {},
           llmConfig: node.llmConfig ? JSON.parse(node.llmConfig) : {
             model: 'gpt-3.5-turbo',
@@ -565,7 +759,20 @@ export default {
       } else {
         // 正常模式下，编辑节点
         this.selectedNode = node;
-        this.editingNode = {...node};
+        this.editingNode = {
+          ...node,
+          startConfig: node.startConfig || {
+            inputVariables: []
+          },
+          llmConfig: node.llmConfig || {
+            model: 'gpt-3.5-turbo',
+            systemPrompt: '',
+            userPrompt: '',
+            temperature: 0.7,
+            maxTokens: 1000,
+            inputVariables: []
+          }
+        };
         this.showNodeModal = true;
       }
     },
@@ -900,10 +1107,12 @@ export default {
         type: 'llm',
         x: 400 + Math.random() * 200 - 100,
         y: 300 + Math.random() * 200 - 100,
-        yamlConfig: '',
         config: {},
+        startConfig: {
+          inputVariables: []
+        },
         llmConfig: {
-          model: 'gpt-3.5-turbo',
+          model: this.aiConfigurations.length > 0 ? this.aiConfigurations[0].model : 'gpt-3.5-turbo',
           systemPrompt: '',
           userPrompt: '',
           temperature: 0.7,
@@ -936,6 +1145,9 @@ export default {
 
     // START节点配置相关方法
     addStartVariable() {
+      if (!this.editingNode.startConfig) {
+        this.editingNode.startConfig = {};
+      }
       if (!this.editingNode.startConfig.inputVariables) {
         this.editingNode.startConfig.inputVariables = [];
       }
@@ -947,7 +1159,7 @@ export default {
     },
 
     removeStartVariable(index) {
-      if (this.editingNode.startConfig.inputVariables) {
+      if (this.editingNode.startConfig && this.editingNode.startConfig.inputVariables) {
         this.editingNode.startConfig.inputVariables.splice(index, 1);
       }
     },
@@ -959,7 +1171,7 @@ export default {
         alert('请先添加开始节点');
         return;
       }
-      
+
       this.showRunDrawer = true;
       this.workflowParams = {};
       this.executionResult = null;
@@ -979,7 +1191,7 @@ export default {
       }
 
       this.isRunning = true;
-      
+
       try {
         const workflowData = {
           agentId: this.currentAgent.id,
@@ -1038,7 +1250,6 @@ export default {
           agentId: this.currentAgent?.id,
           positionX: Math.round(this.editingNode.x || 0),
           positionY: Math.round(this.editingNode.y || 0),
-          yamlConfig: this.editingNode.yamlConfig || '',
           config: JSON.stringify(this.editingNode.config || {}),
           llmConfig: JSON.stringify(this.editingNode.llmConfig || {
             model: 'gpt-3.5-turbo',
@@ -1058,7 +1269,7 @@ export default {
           // 编辑现有节点
           nodeData.id = this.selectedNode.id;
           await agentApi.saveUpdateNode(nodeData);
-          
+
           // 更新本地数据
           const nodeIndex = this.graphNodes.findIndex(n => n.id === this.selectedNode.id);
           if (nodeIndex !== -1) {
@@ -1213,7 +1424,7 @@ export default {
           // 编辑现有连线
           linkData.id = this.selectedLink.id;
           const response = await agentApi.saveUpdateLink(linkData);
-          
+
           // 更新本地数据
           const updatedLink = response.data.data;
           const linkIndex = this.graphLinks.findIndex(l => l.id === this.selectedLink.id);
@@ -1280,102 +1491,576 @@ export default {
         error: '#f5222d'
       };
       return colors[type] || '#666';
-    }
+    },
+
+    // 新增方法
+    getAgentNodeCount(agentId) {
+      return this.graphNodes.filter(node => node.agentId === agentId).length;
+    },
+
+    getAgentStatus(agent) {
+      // 这里可以根据实际业务逻辑返回状态
+      return '活跃';
+    },
+
+    getAgentStatusType(agent) {
+      // 这里可以根据实际业务逻辑返回状态类型
+      return 'success';
+    },
+
+    editAgent(agent) {
+      // 编辑 Agent 信息
+      console.log('编辑 Agent:', agent);
+    },
+
+    duplicateAgent(agent) {
+      // 复制 Agent
+      console.log('复制 Agent:', agent);
+    },
+
+    // 缩放控制方法
+    zoomIn() {
+      this.zoomLevel = Math.min(this.zoomLevel * 1.2, 3);
+      this.updateZoom();
+    },
+
+    zoomOut() {
+      this.zoomLevel = Math.max(this.zoomLevel / 1.2, 0.1);
+      this.updateZoom();
+    },
+
+    resetZoom() {
+      this.zoomLevel = 1;
+      this.updateZoom();
+    },
+
+    updateZoom() {
+      if (this.$refs.canvas) {
+        const svg = d3.select(this.$refs.canvas).select('svg');
+        svg.transition().duration(300).attr('transform', `scale(${this.zoomLevel})`);
+      }
+    },
+
+    fitToView() {
+      // 适应视图
+      if (this.$refs.canvas && this.graphNodes.length > 0) {
+        const container = this.$refs.canvas;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        // 计算所有节点的边界
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        this.graphNodes.forEach(node => {
+          minX = Math.min(minX, node.x);
+          minY = Math.min(minY, node.y);
+          maxX = Math.max(maxX, node.x);
+          maxY = Math.max(maxY, node.y);
+        });
+
+        const nodeWidth = 100; // 节点宽度
+        const nodeHeight = 100; // 节点高度
+        const padding = 50;
+
+        const scaleX = (width - padding * 2) / (maxX - minX + nodeWidth);
+        const scaleY = (height - padding * 2) / (maxY - minY + nodeHeight);
+        const scale = Math.min(scaleX, scaleY, 1);
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        this.zoomLevel = scale;
+        const svg = d3.select(this.$refs.canvas).select('svg');
+        svg.transition().duration(500)
+            .attr('transform', `translate(${width / 2 - centerX * scale}, ${height / 2 - centerY * scale}) scale(${scale})`);
+      }
+    },
   },
-  
+
   computed: {
     canRunWorkflow() {
       return this.graphNodes.length > 0 && this.graphNodes.some(node => node.type === 'START');
+    },
+
+    filteredAgents() {
+      if (!this.searchQuery) {
+        return this.agents;
+      }
+      return this.agents.filter(agent =>
+          agent.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+          (agent.description && agent.description.toLowerCase().includes(this.searchQuery.toLowerCase()))
+      );
     }
-  }
-};
+  },
+}
 </script>
 
-<style scoped>
-.agent-container {
+<style scoped lang="scss">
+// 主页面容器
+.agent-page {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f5f5f5;
-}
-
-.agent-header {
-  padding: 20px;
-  background: white;
-  border-bottom: 1px solid #ddd;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.agent-content {
-  flex: 1;
-  display: flex;
-}
-
-.sidebar {
-  width: 250px;
-  background: white;
-  border-right: 1px solid #ddd;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.main-content {
-  flex: 1;
-  padding: 20px;
-}
-
-.agent-list {
-  margin-top: 15px;
-}
-
-.agent-item {
-  padding: 12px;
-  margin-bottom: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.agent-item:hover {
-  background-color: #f0f0f0;
-}
-
-.agent-item.active {
-  background-color: #e3f2fd;
-  border-color: #2196F3;
-}
-
-.agent-name {
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.agent-desc {
-  font-size: 12px;
-  color: #666;
-}
-
-.workspace-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.canvas-container {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: var(--background-color);
   overflow: hidden;
 }
 
-.agent-canvas {
+// 页面头部
+.page-header {
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .header-left {
+    .page-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-color);
+      margin: 0 0 8px 0;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-description {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+  }
+
+  .header-actions {
+    .el-button {
+      border-radius: 12px;
+      font-weight: 600;
+      padding: 12px 24px;
+      height: auto;
+    }
+  }
+}
+
+// 主布局
+.agent-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  max-width: 1400px;
+  margin: 0 auto;
   width: 100%;
-  height: 600px;
-  min-height: 400px;
+}
+
+// 左侧 Agent 列表
+.agent-sidebar {
+  width: 320px;
+  background: var(--surface-color);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .sidebar-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border-light);
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0 0 16px 0;
+    }
+
+    .search-box {
+      .el-input {
+        .el-input__wrapper {
+          border-radius: 8px;
+          border: 1px solid var(--border-color);
+          transition: all var(--transition-fast);
+
+          &:hover {
+            border-color: var(--primary-color);
+          }
+
+          &.is-focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+          }
+        }
+      }
+    }
+  }
+
+  .agent-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+}
+
+// Agent 卡片
+.agent-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+
+  &:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.15);
+    transform: translateY(-2px);
+  }
+
+  &.active {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(22, 119, 255, 0.05), rgba(114, 46, 209, 0.05));
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.2);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+      border-radius: 0 4px 4px 0;
+    }
+  }
+
+  .agent-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+
+    .agent-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .agent-info {
+      flex: 1;
+      min-width: 0;
+
+      .agent-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0 0 4px 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .agent-desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin: 0;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+    }
+
+    .agent-actions {
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+  }
+
+  &:hover .agent-actions {
+    opacity: 1;
+  }
+
+  .agent-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+
+      .stat-label {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .stat-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-color);
+      }
+    }
+  }
+}
+
+// 工作流编辑器
+.workflow-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-color);
+  overflow: hidden;
+}
+
+// 编辑器容器
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// 工具栏
+.toolbar {
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .toolbar-left {
+    .agent-info-header {
+      h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0 0 4px 0;
+      }
+
+      p {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin: 0;
+      }
+    }
+  }
+
+  .toolbar-right {
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .el-button-group {
+        .el-button {
+          border-radius: 8px;
+          font-weight: 500;
+        }
+      }
+
+      .el-button {
+        border-radius: 8px;
+        font-weight: 500;
+        height: 36px;
+        padding: 0 16px;
+      }
+    }
+  }
+}
+
+// 画布包装器
+.canvas-wrapper {
+  flex: 1;
+  position: relative;
+  background: var(--surface-color);
+  margin: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+// 工作流画布
+.workflow-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: radial-gradient(circle at 20px 20px, var(--border-light) 1px, transparent 1px),
+  radial-gradient(circle at 60px 60px, var(--border-light) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: 0 0, 20px 20px;
+}
+
+// 画布工具栏
+.canvas-toolbar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  .zoom-controls,
+  .view-controls {
+    display: flex;
+    gap: 4px;
+  }
+
+  .el-button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+}
+
+// 空状态
+.empty-workspace {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-color);
+  margin: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+
+  .empty-content {
+    text-align: center;
+    max-width: 400px;
+
+    .empty-icon {
+      color: var(--text-tertiary);
+      margin-bottom: 24px;
+    }
+
+    h3 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0 0 12px 0;
+    }
+
+    p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin: 0 0 24px 0;
+      line-height: 1.6;
+    }
+
+    .el-button {
+      border-radius: 12px;
+      font-weight: 600;
+      padding: 12px 24px;
+      height: auto;
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 1024px) {
+  .agent-layout {
+    flex-direction: column;
+  }
+
+  .agent-sidebar {
+    width: 100%;
+    height: 200px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+
+    .agent-list {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      overflow-x: auto;
+
+      .agent-card {
+        min-width: 280px;
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    padding: 16px;
+
+    .header-content {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+  }
+
+  .toolbar {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+
+    .toolbar-right {
+      width: 100%;
+
+      .toolbar-actions {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+    }
+  }
+
+  .canvas-wrapper {
+    margin: 8px;
+  }
+}
+
+// 滚动条样式
+.agent-list::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.agent-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agent-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.agent-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
 }
 
 /* D3图表样式 */
@@ -1712,6 +2397,27 @@ export default {
   border-color: #64b5f6;
 }
 
+.agent-info {
+  flex: 1;
+  cursor: pointer;
+}
+
+.delete-agent-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.delete-agent-btn:hover {
+  opacity: 1;
+  background: rgba(244, 67, 54, 0.2);
+  border-color: #f44336;
+}
+
 .workspace-header {
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1773,17 +2479,41 @@ export default {
 }
 
 .form-control {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: #ffffff;
   border-radius: 8px;
 }
 
 .form-control:focus {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(40, 40, 40, 0.95);
   border-color: #64b5f6;
   color: #ffffff;
   box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+/* 下拉框选项样式 */
+select.form-control option {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  padding: 8px;
+}
+
+select.form-control option:hover {
+  background: #333333 !important;
+  color: #ffffff !important;
+}
+
+/* 确保下拉框文字可见 */
+select.form-control {
+  color: #ffffff !important;
+  background: #2a2a2a !important;
+}
+
+/* 下拉框展开时的背景色 */
+select.form-control:focus {
+  color: #ffffff !important;
+  background: #2a2a2a !important;
 }
 
 .form-control::placeholder {
@@ -1978,8 +2708,12 @@ export default {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .progress-container {
@@ -1999,8 +2733,12 @@ export default {
 }
 
 @keyframes progress {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .execution-result {

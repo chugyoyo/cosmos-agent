@@ -37,8 +37,6 @@ public class AgentNodeDTO {
 
     private String config;
     
-    private String yamlConfig;
-    
     private String llmConfig;
     
     private String startConfig;

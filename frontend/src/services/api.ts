@@ -67,7 +67,8 @@ export const agentApi = {
     api.get<ApiResponse<boolean>>('/agents/checkLinkExists', {
       params: { agentId, sourceNodeId, targetNodeId }
     }),
-  executeWorkflow: (workflowData: any) => api.post<ApiResponse<any>>('/agents/executeWorkflow', workflowData)
+  executeWorkflow: (workflowData: any) => api.post<ApiResponse<any>>('/agents/executeWorkflow', workflowData),
+  getAIConfigurations: () => api.get<ApiResponse<any[]>>('/configurations/getAllConfigurations')
 }
 
 export const chatApi = {

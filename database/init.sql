@@ -49,7 +49,6 @@ CREATE TABLE agent_node
     position_x  INTEGER      NOT NULL,
     position_y  INTEGER      NOT NULL,
     config      TEXT,
-    yaml_config TEXT,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

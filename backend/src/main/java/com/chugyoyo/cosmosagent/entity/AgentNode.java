@@ -34,8 +34,6 @@ public class AgentNode {
     @TableField(typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
     private String config;
     
-    private String yamlConfig;
-    
     private String llmConfig;
     
     private String startConfig;
