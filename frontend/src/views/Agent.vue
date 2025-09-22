@@ -210,6 +210,14 @@
             </div>
 
             <div class="form-group">
+              <label>输出变量:</label>
+              <input v-model="editingNode.llmConfig.outputVariable" 
+                     class="form-control" 
+                     placeholder="输出变量名（如：llm_output）"
+                     title="后续节点可以通过此变量名引用LLM的输出结果">
+            </div>
+
+            <div class="form-group">
               <label>输入变量:</label>
               <div class="input-variables">
                 <div v-for="(variable, index) in (editingNode.llmConfig?.inputVariables || [])"
@@ -793,6 +801,7 @@ export default {
             userPrompt: '',
             temperature: 0.7,
             maxTokens: 1000,
+            outputVariable: 'llm_output',
             inputVariables: []
           }
         };
@@ -1261,6 +1270,7 @@ export default {
           userPrompt: '',
           temperature: 0.7,
           maxTokens: 1000,
+          outputVariable: 'llm_output',
           inputVariables: []
         },
         isFixed: false,
@@ -1401,6 +1411,7 @@ export default {
             userPrompt: '',
             temperature: 0.7,
             maxTokens: 1000,
+            outputVariable: 'llm_output',
             inputVariables: []
           }),
           startConfig: JSON.stringify(this.editingNode.startConfig || {

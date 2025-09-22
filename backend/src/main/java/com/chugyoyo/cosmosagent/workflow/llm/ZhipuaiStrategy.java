@@ -1,10 +1,11 @@
 package com.chugyoyo.cosmosagent.workflow.llm;
 
+import com.alibaba.fastjson2.JSON;
 import com.chugyoyo.cosmosagent.service.ZhipuaiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
+import org.springframework.util.CollectionUtils;
 
 import java.util.Map;
 
@@ -22,13 +23,18 @@ public class ZhipuaiStrategy implements LLMStrategy {
             
             // 调用智谱AI服务
             String response = zhipuaiService.chat(prompt);
-
             log.info("Zhipuai response received: {}", response);
-            return LLMResponse.success(response, Map.of(
-                "provider", "zhipuai",
-                "model", parameters.getOrDefault("model", "glm-4"),
-                "timestamp", System.currentTimeMillis()
-            ));
+
+            ZhipuChatRespDto chatRespDto = JSON.parseObject(response, ZhipuChatRespDto.class);
+            String content = "未找到内容";
+            if (chatRespDto != null && !CollectionUtils.isEmpty(chatRespDto.getChoices())) {
+                ZhipuChatRespDto.Choice firstChoice = chatRespDto.getChoices().get(0);
+                if (firstChoice != null && firstChoice.getMessage() != null) {
+                    content = firstChoice.getMessage().getContent();
+                }
+            }
+
+            return LLMResponse.success(content);
             
         } catch (Exception e) {
             log.error("Zhipuai execution failed", e);
@@ -43,6 +49,19 @@ public class ZhipuaiStrategy implements LLMStrategy {
     
     @Override
     public boolean validateParameters(Map<String, Object> parameters) {
-        return parameters != null;
+        if (parameters == null) {
+            return false;
+        }
+        
+        // 检查outputVariable参数（可选）
+        if (parameters.containsKey("outputVariable")) {
+            Object outputVar = parameters.get("outputVariable");
+            if (!(outputVar instanceof String) || ((String) outputVar).trim().isEmpty()) {
+                log.warn("outputVariable parameter should be a non-empty string");
+                return false;
+            }
+        }
+        
+        return true;
     }
 }
