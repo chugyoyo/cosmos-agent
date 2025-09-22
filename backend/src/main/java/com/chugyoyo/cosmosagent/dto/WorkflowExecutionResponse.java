@@ -1,5 +1,6 @@
 package com.chugyoyo.cosmosagent.dto;
 
+import com.chugyoyo.cosmosagent.workflow.WorkflowState;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +15,7 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 public class WorkflowExecutionResponse {
-    
+
     private String executionId;
     private Long agentId;
     private String status;
@@ -24,10 +25,11 @@ public class WorkflowExecutionResponse {
     private String errorMessage;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    @Builder
     public static class ExecutionStep {
         private String stepId;
         private String nodeName;
@@ -39,5 +41,9 @@ public class WorkflowExecutionResponse {
         private Long duration;
         private LocalDateTime startTime;
         private LocalDateTime endTime;
+
+        public boolean isSuccess() {
+            return WorkflowState.COMPLETED.name().equals(status);
+        }
     }
 }

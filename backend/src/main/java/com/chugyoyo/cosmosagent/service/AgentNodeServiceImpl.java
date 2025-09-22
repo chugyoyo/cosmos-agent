@@ -69,6 +69,13 @@ public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode
         // 建议调用AgentLinkService的相应方法
     }
 
+    @Override
+    public List<AgentNode> listByAgentId(Long agentId) {
+        LambdaQueryWrapper<AgentNode> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AgentNode::getAgentId, agentId);
+        return agentNodeMapper.selectList(wrapper);
+    }
+
     private AgentNodeDTO convertToDTO(AgentNode entity) {
         AgentNodeDTO dto = new AgentNodeDTO();
         BeanUtils.copyProperties(entity, dto);

@@ -1,6 +1,9 @@
 package com.chugyoyo.cosmosagent.service;
 
 import com.chugyoyo.cosmosagent.dto.AgentLinkDTO;
+import com.chugyoyo.cosmosagent.entity.AgentLink;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.List;
 
 public interface AgentLinkService {
@@ -59,4 +62,6 @@ public interface AgentLinkService {
      * 检查两个节点之间是否已存在连线
      */
     boolean existsLinkBetweenNodes(Long agentId, Long sourceNodeId, Long targetNodeId);
+
+    List<AgentLink> listByAgentId(Long agentId);
 }

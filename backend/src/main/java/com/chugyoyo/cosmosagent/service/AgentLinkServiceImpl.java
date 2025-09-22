@@ -1,5 +1,6 @@
 package com.chugyoyo.cosmosagent.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chugyoyo.cosmosagent.dto.AgentLinkDTO;
 import com.chugyoyo.cosmosagent.entity.AgentLink;
 import com.chugyoyo.cosmosagent.mapper.AgentLinkMapper;
@@ -140,7 +141,14 @@ public class AgentLinkServiceImpl implements AgentLinkService {
     public boolean existsLinkBetweenNodes(Long agentId, Long sourceNodeId, Long targetNodeId) {
         return agentLinkMapper.countByNodes(agentId, sourceNodeId, targetNodeId) > 0;
     }
-    
+
+    @Override
+    public List<AgentLink> listByAgentId(Long agentId) {
+        LambdaQueryWrapper<AgentLink> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AgentLink::getAgentId, agentId);
+        return agentLinkMapper.selectList(wrapper);
+    }
+
     private AgentLinkDTO convertToDTO(AgentLink link) {
         AgentLinkDTO dto = new AgentLinkDTO();
         BeanUtils.copyProperties(link, dto);
