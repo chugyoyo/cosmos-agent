@@ -16,34 +16,5 @@ public class WorkflowExecutionRequest {
     @NotNull(message = "代理ID不能为空")
     private Long agentId;
     
-    private List<WorkflowNodeDTO> nodes;
-    
-    private List<WorkflowLinkDTO> links;
-    
     private Map<String, Object> params;
-    
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class WorkflowNodeDTO {
-        private Long id;
-        private String name;
-        private String type;
-        private Integer positionX;
-        private Integer positionY;
-        private String config;
-        private String yamlConfig;
-    }
-    
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class WorkflowLinkDTO {
-        private Long id;
-        private Long sourceNodeId;
-        private Long targetNodeId;
-        private String linkType;
-        private String name;
-        private String condition;
-    }
 }

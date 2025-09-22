@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 // Spring State Machine imports removed - using custom state machine implementation
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -145,6 +146,8 @@ public class WorkflowStateMachine {
             // 收集结果
             if (step.getOutput() != null) {
                 finalResult.putAll(step.getOutput());
+                // 将当前节点的输出添加到中间结果中，供后续节点使用
+                context.getIntermediateResults().putAll(step.getOutput());
             }
             
             // 查找下一个节点
@@ -175,7 +178,7 @@ public class WorkflowStateMachine {
             
             Map<String, Object> input = prepareNodeInput(context, node);
             Map<String, Object> output = null;
-            
+
             if ("START".equals(node.getType())) {
                 output = executeStartNode(context, node, input);
             } else if ("LLM".equals(node.getType())) {
@@ -184,7 +187,7 @@ public class WorkflowStateMachine {
                 throw new RuntimeException("不支持的节点类型: " + node.getType());
             }
             
-            long duration = java.time.Duration.between(startTime, LocalDateTime.now()).toMillis();
+            long duration = Duration.between(startTime, LocalDateTime.now()).toMillis();
             
             return new WorkflowExecutionResponse.ExecutionStep(
                     stepId,
@@ -200,7 +203,7 @@ public class WorkflowStateMachine {
             );
             
         } catch (Exception e) {
-            log.error("Node execution failed: " + node.getName(), e);
+            log.error("Node execution failed:{}",node.getName(), e);
             long duration = java.time.Duration.between(startTime, LocalDateTime.now()).toMillis();
             
             return new WorkflowExecutionResponse.ExecutionStep(
@@ -319,6 +322,9 @@ public class WorkflowStateMachine {
         // 如果是开始节点，使用用户输入的参数
         if ("START".equals(node.getType()) && context.getRequest().getParams() != null) {
             input.putAll(context.getRequest().getParams());
+        } else {
+            // 对于非开始节点，将前面节点的输出作为当前节点的输入
+            input.putAll(context.getIntermediateResults());
         }
         
         input.put("nodeId", node.getId());
@@ -359,12 +365,14 @@ public class WorkflowStateMachine {
         private final LocalDateTime startTime;
         private WorkflowState state;
         private String errorMessage;
+        private Map<String, Object> intermediateResults;
         
         public WorkflowContext(String executionId, WorkflowExecutionRequest request) {
             this.executionId = executionId;
             this.request = request;
             this.startTime = LocalDateTime.now();
             this.state = WorkflowState.INITIALIZING;
+            this.intermediateResults = new HashMap<>();
         }
         
         // Getters and Setters
@@ -375,5 +383,7 @@ public class WorkflowStateMachine {
         public void setState(WorkflowState state) { this.state = state; }
         public String getErrorMessage() { return errorMessage; }
         public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+        public Map<String, Object> getIntermediateResults() { return intermediateResults; }
+        public void setIntermediateResults(Map<String, Object> intermediateResults) { this.intermediateResults = intermediateResults; }
     }
 }
