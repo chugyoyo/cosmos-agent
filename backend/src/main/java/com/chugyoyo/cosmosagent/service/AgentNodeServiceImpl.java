@@ -38,6 +38,16 @@ public class AgentNodeServiceImpl extends ServiceImpl<AgentNodeMapper, AgentNode
     @Override
     @Transactional
     public AgentNodeDTO saveUpdateNode(AgentNodeDTO dto) {
+        // 验证 START 节点唯一性
+        if ("START".equals(dto.getType())) {
+            List<AgentNodeDTO> existingNodes = getNodesByAgentId(dto.getAgentId());
+            boolean hasExistingStartNode = existingNodes.stream()
+                    .anyMatch(node -> "START".equals(node.getType()) && !node.getId().equals(dto.getId()));
+
+            if (hasExistingStartNode) {
+                throw new RuntimeException("一个画布只能有一个 START 节点");
+            }
+        }
         AgentNode node = convertToEntity(dto);
         node.setUpdatedAt(LocalDateTime.now());
         saveOrUpdate(node);

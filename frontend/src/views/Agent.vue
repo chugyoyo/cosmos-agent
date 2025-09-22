@@ -21,10 +21,10 @@
     <!-- 主内容区域 -->
     <div class="agent-layout">
       <!-- 左侧 Agent 列表 -->
-      <aside class="agent-sidebar">
+      <aside class="agent-sidebar" :class="{ 'collapsed': agentListCollapsed }">
         <div class="sidebar-header">
-          <h3>Agent 列表</h3>
-          <div class="search-box">
+          <h3 v-show="!agentListCollapsed">Agent 列表</h3>
+          <div class="search-box" v-show="!agentListCollapsed">
             <el-input
                 v-model="searchQuery"
                 placeholder="搜索 Agent..."
@@ -32,6 +32,12 @@
                 clearable
             />
           </div>
+          <button class="collapse-btn" @click="toggleAgentList">
+            <el-icon>
+              <ArrowLeft v-if="!agentListCollapsed"/>
+              <ArrowRight v-else/>
+            </el-icon>
+          </button>
         </div>
 
         <div class="agent-list">
@@ -39,46 +45,54 @@
               v-for="agent in filteredAgents"
               :key="agent.id"
               class="agent-card"
-              :class="{ active: currentAgent?.id === agent.id }"
+              :class="{ active: currentAgent?.id === agent.id, 'collapsed': agentListCollapsed }"
               @click="selectAgent(agent)"
           >
-            <div class="agent-card-header">
-              <div class="agent-icon">
-                <el-icon>
-
-                </el-icon>
-              </div>
-              <div class="agent-info">
-                <h4 class="agent-name">{{ agent.name }}</h4>
-                <p class="agent-desc">{{ agent.description || '暂无描述' }}</p>
-              </div>
-              <div class="agent-actions">
-                <el-dropdown trigger="click" @click.stop>
-                  <el-button type="text" size="small">
-                    <el-icon>
-                      <MoreFilled/>
-                    </el-icon>
-                  </el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item @click="editAgent(agent)">编辑</el-dropdown-item>
-                      <el-dropdown-item @click="duplicateAgent(agent)">复制</el-dropdown-item>
-                      <el-dropdown-item @click="deleteAgent(agent)" divided>删除</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
+            <!-- 收起状态：只显示首字母头像 -->
+            <div v-if="agentListCollapsed" class="agent-avatar-collapsed">
+              {{ getAgentInitial(agent.name) }}
             </div>
-            <div class="agent-stats">
-              <div class="stat-item">
-                <span class="stat-label">节点</span>
-                <span class="stat-value">{{ getAgentNodeCount(agent.id) }}</span>
+
+            <!-- 展开状态：完整信息 -->
+            <div v-else>
+              <div class="agent-card-header">
+                <div class="agent-icon">
+                  <el-icon>
+
+                  </el-icon>
+                </div>
+                <div class="agent-info">
+                  <h4 class="agent-name">{{ agent.name }}</h4>
+                  <p class="agent-desc">{{ agent.description || '暂无描述' }}</p>
+                </div>
+                <div class="agent-actions">
+                  <el-dropdown trigger="click" @click.stop>
+                    <el-button type="text" size="small">
+                      <el-icon>
+                        <MoreFilled/>
+                      </el-icon>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item @click="editAgent(agent)">编辑</el-dropdown-item>
+                        <el-dropdown-item @click="duplicateAgent(agent)">复制</el-dropdown-item>
+                        <el-dropdown-item @click="deleteAgent(agent)" divided>删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </div>
-              <div class="stat-item">
-                <span class="stat-label">状态</span>
-                <el-tag :type="getAgentStatusType(agent)" size="small">
-                  {{ getAgentStatus(agent) }}
-                </el-tag>
+              <div class="agent-stats">
+                <div class="stat-item">
+                  <span class="stat-label">节点</span>
+                  <span class="stat-value">{{ getAgentNodeCount(agent.id) }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">状态</span>
+                  <el-tag :type="getAgentStatusType(agent)" size="small">
+                    {{ getAgentStatus(agent) }}
+                  </el-tag>
+                </div>
               </div>
             </div>
           </div>
@@ -200,10 +214,13 @@
           </div>
           <div class="form-group">
             <label>节点类型:</label>
-            <select v-model="editingNode.type" class="form-control">
-              <option value="START">START</option>
-              <option value="LLM">LLM</option>
+            <select v-model="editingNode.type" class="form-control" @change="checkStartNodeLimit">
+              <option value="START">START (开始节点)</option>
+              <option value="LLM">LLM (大语言模型)</option>
             </select>
+            <small class="text-muted" v-if="editingNode.type === 'START'">
+              注意：一个画布只能有一个 START 节点
+            </small>
           </div>
 
           <!-- START节点配置 -->
@@ -454,7 +471,9 @@ import {
   ZoomOut,
   Refresh,
   FullScreen,
-  Connection
+  Connection,
+  ArrowLeft,
+  ArrowRight
 } from '@element-plus/icons-vue';
 
 export default {
@@ -470,7 +489,9 @@ export default {
     ZoomOut,
     Refresh,
     FullScreen,
-    Connection
+    Connection,
+    ArrowLeft,
+    ArrowRight
   },
   props: {
     id: {
@@ -511,6 +532,7 @@ export default {
       showCreateModal: false,
       showEditModal: false,
       editingAgent: null,
+      agentListCollapsed: false,
       linkCreationMode: false,
       tempLinkSource: null,
       newAgent: {
@@ -518,6 +540,7 @@ export default {
         description: ''
       },
       simulation: null,
+      zoom: null,
       d3Data: null,
       nextNodeId: 1,
       showRunDrawer: false,
@@ -622,24 +645,18 @@ export default {
         // 加载节点
         const nodesResponse = await agentApi.getNodes(agentId);
         const nodes = nodesResponse.data.data.map(node => ({
+          ...node,
           id: node.id,
           name: node.name,
           type: node.type,
           x: node.positionX,
           y: node.positionY,
-          config: node.config ? JSON.parse(node.config) : {},
-          llmConfig: node.llmConfig ? JSON.parse(node.llmConfig) : {
-            model: 'gpt-3.5-turbo',
-            systemPrompt: '',
-            userPrompt: '',
-            temperature: 0.7,
-            maxTokens: 1000,
-            inputVariables: []
-          },
-          startConfig: node.startConfig ? JSON.parse(node.startConfig) : {
-            inputVariables: []
-          }
+          config: node.config ? JSON.parse(node.config) : null,
+          llmConfig: node.llmConfig ? JSON.parse(node.llmConfig) : null,
+          startConfig: node.startConfig ? JSON.parse(node.startConfig) : null
         }));
+
+        console.log("loadAgentNodes nodes", nodes)
 
         // 加载连线数据
         const linksResponse = await agentApi.getLinks(agentId);
@@ -776,6 +793,39 @@ export default {
             .select("circle")
             .classed("fixed", true);
       }
+
+      // 保存节点位置到后端
+      this.saveNodePosition(d);
+    },
+
+    // 保存节点位置到后端
+    async saveNodePosition(node) {
+      try {
+        const nodeData = {
+          ...node,
+          positionX: Math.round(node.x || 0),
+          positionY: Math.round(node.y || 0),
+          llmConfig: node.llmConfig? JSON.stringify(node.llmConfig) : null,
+          startConfig: node.startConfig? JSON.stringify(node.startConfig): null,
+        };
+
+        await agentApi.saveUpdateNode(nodeData);
+        console.log('节点位置已保存:', nodeData);
+      } catch (error) {
+        console.error('保存节点位置失败:', error);
+      }
+    },
+
+    checkStartNodeLimit() {
+      if (this.editingNode.type === 'START') {
+        const existingStartNode = this.graphNodes.find(node =>
+            node.type === 'START' && node.id !== this.selectedNode?.id
+        );
+        if (existingStartNode) {
+          alert('一个画布只能有一个 START 节点。\n\n当前已存在 START 节点：' + existingStartNode.name + '\n\n请先删除现有的 START 节点，或选择其他节点类型。');
+          this.editingNode.type = 'LLM';
+        }
+      }
     },
 
     // 节点点击事件
@@ -853,7 +903,28 @@ export default {
       // 创建容器组
       const g = svg.append("g");
 
-      // 创建力导向图布局
+      // 添加画布拖拽功能
+      const zoom = d3.zoom()
+          .scaleExtent([0.1, 4])
+          .on("zoom", (event) => {
+            g.attr("transform", event.transform);
+          });
+
+      svg.call(zoom);
+
+      // 保存zoom实例以便后续使用
+      this.zoom = zoom;
+
+      // 创建力导向图布局 - 先设置节点的初始位置
+      this.graphNodes.forEach(node => {
+        // 如果节点有保存的位置，则固定该位置
+        if (node.x !== undefined && node.y !== undefined) {
+          node.fx = node.x;
+          node.fy = node.y;
+          node.isFixed = true;
+        }
+      });
+
       this.simulation = d3.forceSimulation(this.graphNodes)
           .force("link", d3.forceLink(this.graphLinks)
               .id(d => d.id)
@@ -866,8 +937,8 @@ export default {
           .force("collision", d3.forceCollide()
               .radius(d => this.getNodeRadius(d) + 25)
               .strength(1.0))
-          .force("x", d3.forceX(width / 2).strength(0.05))
-          .force("y", d3.forceY(height / 2).strength(0.05));
+          .force("x", d3.forceX(d => d.fx || width / 2).strength(d => d.fx ? 0 : 0.05))
+          .force("y", d3.forceY(d => d.fy || height / 2).strength(d => d.fy ? 0 : 0.05));
 
       // 创建节点组
       const nodes = g.append("g")
@@ -1118,18 +1189,18 @@ export default {
       try {
         const response = await agentApi.updateAgent(this.editingAgent.id, this.editingAgent);
         const data = response.data.data || response.data;
-        
+
         // 更新本地数据
         const index = this.agents.findIndex(a => a.id === this.editingAgent.id);
         if (index !== -1) {
           this.agents[index] = data;
         }
-        
+
         // 如果编辑的是当前选中的 Agent，也要更新
         if (this.currentAgent && this.currentAgent.id === this.editingAgent.id) {
           this.currentAgent = data;
         }
-        
+
         this.showEditModal = false;
         this.editingAgent = null;
       } catch (error) {
@@ -1343,7 +1414,11 @@ export default {
         this.initGraph();
       } catch (error) {
         console.error('保存节点失败:', error);
-        alert('保存节点失败');
+        if (error.response?.data?.message?.includes('START 节点')) {
+          alert('一个画布只能有一个 START 节点，请先删除现有的 START 节点');
+        } else {
+          alert('保存节点失败: ' + (error.response?.data?.message || error.message));
+        }
       }
     },
 
@@ -1562,9 +1637,25 @@ export default {
       return 'success';
     },
 
+    getAgentInitial(name) {
+      return name ? name.charAt(0).toUpperCase() : '?';
+    },
+
+    getAgentLinkCount(agentId) {
+      // 获取 Agent 的连线数量
+      return this.graphLinks.filter(link =>
+          this.graphNodes.some(node => node.agentId === agentId &&
+              (link.source === node.id || link.target === node.id))
+      ).length;
+    },
+
+    toggleAgentList() {
+      this.agentListCollapsed = !this.agentListCollapsed;
+    },
+
     editAgent(agent) {
       // 编辑 Agent 信息
-      this.editingAgent = { ...agent };
+      this.editingAgent = {...agent};
       this.showEditModal = true;
     },
 
@@ -1659,6 +1750,13 @@ export default {
   overflow: hidden;
 }
 
+// 主内容区域
+.agent-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
 // 页面头部
 .page-header {
   background: var(--surface-color);
@@ -1670,8 +1768,7 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: 1400px;
-    margin: 0 auto;
+    width: 100%;
   }
 
   .header-left {
@@ -1708,8 +1805,6 @@ export default {
   flex: 1;
   display: flex;
   overflow: hidden;
-  max-width: 1400px;
-  margin: 0 auto;
   width: 100%;
 }
 
@@ -1721,43 +1816,89 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width var(--transition-normal);
 
-  .sidebar-header {
-    padding: 24px;
-    border-bottom: 1px solid var(--border-light);
+  &.collapsed {
+    width: 80px;
 
-    h3 {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text-color);
-      margin: 0 0 16px 0;
+    .sidebar-header {
+      padding: 16px 12px;
+      justify-content: center;
+
+      .collapse-btn .el-icon {
+        transform: rotate(180deg);
+      }
     }
 
-    .search-box {
-      .el-input {
-        .el-input__wrapper {
-          border-radius: 8px;
-          border: 1px solid var(--border-color);
-          transition: all var(--transition-fast);
+    .agent-list {
+      padding: 8px 4px;
+    }
+  }
+}
 
-          &:hover {
-            border-color: var(--primary-color);
-          }
+.sidebar-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 
-          &.is-focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
-          }
-        }
+  .collapse-btn {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    color: var(--text-secondary);
+
+    &:hover {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .el-icon {
+      font-size: 14px;
+      transition: transform var(--transition-fast);
+    }
+  }
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0 0 16px 0;
+}
+
+.search-box {
+  .el-input {
+    .el-input__wrapper {
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      transition: all var(--transition-fast);
+
+      &:hover {
+        border-color: var(--primary-color);
+      }
+
+      &.is-focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
       }
     }
   }
+}
 
-  .agent-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-  }
+.agent-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
 }
 
 // Agent 卡片
@@ -1770,6 +1911,30 @@ export default {
   cursor: pointer;
   transition: all var(--transition-normal);
   position: relative;
+
+  &.collapsed {
+    padding: 12px 8px;
+    text-align: center;
+    margin-bottom: 8px;
+
+    .agent-avatar-collapsed {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 auto;
+    }
+
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
 
   &:hover {
     border-color: var(--primary-color);
@@ -1905,6 +2070,8 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 73px;
+  flex-shrink: 0;
 
   .toolbar-left {
     .agent-info-header {
@@ -1951,15 +2118,17 @@ export default {
   flex: 1;
   position: relative;
   background: var(--surface-color);
-  margin: 16px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
 }
 
 // 工作流画布
 .workflow-canvas {
+  flex: 1;
   width: 100%;
   height: 100%;
   position: relative;
@@ -1967,6 +2136,7 @@ export default {
   radial-gradient(circle at 60px 60px, var(--border-light) 1px, transparent 1px);
   background-size: 40px 40px;
   background-position: 0 0, 20px 20px;
+  min-height: 400px;
 }
 
 // 画布工具栏

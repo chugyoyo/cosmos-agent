@@ -627,9 +627,14 @@ const currentPage = computed(() => {
 // 页面内容区域
 .page-content {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   background: var(--background-color);
-  padding: 24px;
+  padding: 0;
+  
+  // 为特定页面添加内边距
+  &:has(.home-page) {
+    padding: 24px;
+  }
 }
 
 // 暗色模式适配
