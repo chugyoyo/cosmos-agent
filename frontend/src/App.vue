@@ -14,18 +14,18 @@
         'collapsed': isCollapsed, 
         'mobile-open': isMobile && !isCollapsed 
       }">
-        <div class="sidebar-header">
+        <div class="sidebar-header" v-if="!isCollapsed">
           <div class="logo">
             <div class="logo-icon">
               <el-icon><Connection /></el-icon>
             </div>
-            <div v-show="!isCollapsed" class="logo-text">
+            <div class="logo-text">
               <h1>智宙</h1>
               <p>AI Agent Platform</p>
             </div>
           </div>
           <button class="collapse-btn" @click="toggleSidebar">
-            <el-icon :class="{ 'rotated': isCollapsed }">
+            <el-icon>
               <ArrowLeft />
             </el-icon>
           </button>
@@ -71,6 +71,13 @@
               <div class="user-role">系统管理员</div>
             </div>
           </div>
+        </div>
+        
+        <!-- 折叠状态下的展开按钮 - 显示在最下方 -->
+        <div class="sidebar-expand-btn" v-if="isCollapsed" @click="toggleSidebar">
+          <el-icon>
+            <ArrowLeft />
+          </el-icon>
         </div>
       </aside>
 
@@ -423,6 +430,36 @@ const currentPage = computed(() => {
         color: var(--text-tertiary);
       }
     }
+  }
+}
+
+// 折叠状态下的展开按钮
+.sidebar-expand-btn {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.3);
+  
+  &:hover {
+    background: var(--primary-dark);
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.4);
+  }
+  
+  .el-icon {
+    font-size: 16px;
+    transform: rotate(180deg);
   }
 }
 
