@@ -1164,7 +1164,23 @@ export default {
     // 连线点击事件
     handleLinkClick(link) {
       this.selectedLink = link;
-      this.editingLink = {...link};
+      this.editingLink = {
+        id: link.id,
+        source: link.source,
+        target: link.target,
+        type: link.type,
+        name: link.name,
+        description: link.description || '',
+        condition: link.condition || '',
+        agentId: link.agentId
+      };
+      // 确保 source 和 target 是 ID 值，不是对象
+      if (typeof this.editingLink.source === 'object' && this.editingLink.source !== null) {
+        this.editingLink.source = this.editingLink.source.id;
+      }
+      if (typeof this.editingLink.target === 'object' && this.editingLink.target !== null) {
+        this.editingLink.target = this.editingLink.target.id;
+      }
       this.showLinkModal = true;
     },
 
@@ -1184,8 +1200,8 @@ export default {
 
       try {
         const linkData = {
-          sourceNodeId: this.editingLink.source.id,
-          targetNodeId: this.editingLink.target.id,
+          sourceNodeId: this.editingLink.source,
+          targetNodeId: this.editingLink.target,
           linkType: this.editingLink.type,
           name: this.editingLink.name,
           description: this.editingLink.description || '',
