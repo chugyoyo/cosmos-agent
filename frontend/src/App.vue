@@ -1,33 +1,39 @@
 <template>
   <div id="app">
     <el-container class="layout-container">
-      <el-aside width="240px" class="sidebar">
+      <el-aside :width="isCollapsed ? '64px' : '240px'" class="sidebar" :class="{ 'collapsed': isCollapsed }">
         <div class="logo">
-          <h1>智宙</h1>
-          <p>AI Agent Platform</p>
+          <h1 :class="{ 'collapsed-title': isCollapsed }">智宙</h1>
+          <p v-show="!isCollapsed">AI Agent Platform</p>
         </div>
         <el-menu
           :default-active="$route.path"
           router
           class="sidebar-menu"
+          :collapse="isCollapsed"
         >
           <el-menu-item index="/">
             <el-icon><House /></el-icon>
-            <span>首页</span>
+            <template #title>首页</template>
           </el-menu-item>
           <el-menu-item index="/settings">
             <el-icon><Setting /></el-icon>
-            <span>设置</span>
+            <template #title>设置</template>
           </el-menu-item>
           <el-menu-item index="/agent">
             <el-icon><Connection /></el-icon>
-            <span>Agent管理</span>
+            <template #title>Agent管理</template>
           </el-menu-item>
           <el-menu-item index="/chat">
             <el-icon><ChatDotRound /></el-icon>
-            <span>智能聊天</span>
+            <template #title>智能聊天</template>
           </el-menu-item>
         </el-menu>
+        <div class="collapse-toggle" @click="toggleSidebar">
+          <el-icon :class="{ 'rotated': isCollapsed }">
+            <ArrowLeft />
+          </el-icon>
+        </div>
       </el-aside>
       <el-container>
         <el-header class="header">
@@ -55,11 +61,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { House, Setting, Connection, ChatDotRound, ArrowLeft } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isDarkMode = ref(false)
+const isCollapsed = ref(true) // 默认压缩状态
 
 // Initialize theme from localStorage or system preference
 const initializeTheme = () => {
@@ -86,8 +94,22 @@ const updateTheme = () => {
 // Watch for theme changes
 watch(isDarkMode, updateTheme)
 
-// Initialize theme on mount
-initializeTheme()
+// Initialize theme and sidebar state on mount
+onMounted(() => {
+  initializeTheme()
+  const savedSidebarState = localStorage.getItem('sidebarCollapsed')
+  if (savedSidebarState !== null) {
+    isCollapsed.value = savedSidebarState === 'true'
+  } else {
+    isCollapsed.value = true // 默认压缩
+  }
+})
+
+// Toggle sidebar
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value
+  localStorage.setItem('sidebarCollapsed', isCollapsed.value.toString())
+}
 
 const currentPage = computed(() => {
   const routeMap: Record<string, string> = {
@@ -109,6 +131,16 @@ const currentPage = computed(() => {
     background: var(--sidebar-bg);
     border-right: 1px solid var(--sidebar-border);
     transition: all var(--transition-normal);
+    position: relative;
+    overflow: visible;
+    
+    &.collapsed {
+      .logo {
+        h1.collapsed-title {
+          font-size: var(--font-size-md);
+        }
+      }
+    }
     
     .logo {
       padding: var(--spacing-lg);
@@ -179,6 +211,39 @@ const currentPage = computed(() => {
         
         &:hover .el-icon {
           transform: scale(1.1);
+        }
+      }
+    }
+    
+    .collapse-toggle {
+      position: absolute;
+      right: -12px;
+      bottom: 20px;
+      width: 24px;
+      height: 24px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 2px solid var(--surface-color);
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+      
+      &:hover {
+        background: var(--secondary-color);
+        transform: scale(1.1);
+      }
+      
+      .el-icon {
+        color: white;
+        font-size: 12px;
+        transition: transform var(--transition-fast);
+        
+        &.rotated {
+          transform: rotate(180deg);
         }
       }
     }

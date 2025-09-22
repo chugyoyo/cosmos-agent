@@ -23,7 +23,7 @@ public class ZhipuaiStrategy implements LLMStrategy {
             // 调用智谱AI服务
             Flux<String> streamedChat = zhipuaiService.streamChat(prompt);
             StringBuilder responseBuilder = new StringBuilder();
-            streamedChat.subscribe(responseBuilder::append);
+            streamedChat.collectList().block().forEach(responseBuilder::append);
             String response = responseBuilder.toString();
             
             log.info("Zhipuai response received: {}", response);
