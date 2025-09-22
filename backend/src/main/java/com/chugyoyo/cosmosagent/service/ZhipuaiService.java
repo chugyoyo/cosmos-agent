@@ -6,4 +6,6 @@ import reactor.core.publisher.Flux;
 public interface ZhipuaiService {
 
     Flux<String> streamChat(String message);
+
+    String chat(String message);
 }

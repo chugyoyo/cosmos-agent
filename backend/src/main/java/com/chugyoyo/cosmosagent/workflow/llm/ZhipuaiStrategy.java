@@ -21,11 +21,8 @@ public class ZhipuaiStrategy implements LLMStrategy {
             log.info("Executing Zhipuai strategy with prompt: {}", prompt);
             
             // 调用智谱AI服务
-            Flux<String> streamedChat = zhipuaiService.streamChat(prompt);
-            StringBuilder responseBuilder = new StringBuilder();
-            streamedChat.collectList().block().forEach(responseBuilder::append);
-            String response = responseBuilder.toString();
-            
+            String response = zhipuaiService.chat(prompt);
+
             log.info("Zhipuai response received: {}", response);
             return LLMResponse.success(response, Map.of(
                 "provider", "zhipuai",

@@ -233,8 +233,8 @@
 
 
     <!-- 连线编辑模态框 -->
-    <div v-if="showLinkModal" class="modal-overlay" @click="closeLinkModal">
-      <div class="modal-content" @click.stop>
+    <div v-if="showLinkModal" class="modal-overlay">
+      <div class="modal-content">
         <div class="modal-header">
           <h3>编辑连线</h3>
           <button @click="closeLinkModal" class="close-btn">&times;</button>
@@ -281,8 +281,8 @@
     </div>
 
     <!-- 新建代理模态框 -->
-    <div v-if="showCreateModal" class="modal-overlay" @click="closeCreateModal">
-      <div class="modal-content" @click.stop>
+    <div v-if="showCreateModal" class="modal-overlay">
+      <div class="modal-content">
         <div class="modal-header">
           <h3>新建代理</h3>
           <button @click="closeCreateModal" class="close-btn">&times;</button>
@@ -331,8 +331,8 @@
     </div>
 
     <!-- 工作流运行抽屉 -->
-    <div v-if="showRunDrawer" class="run-drawer-overlay" @click="closeRunDrawer">
-      <div class="run-drawer" @click.stop>
+    <div v-if="showRunDrawer" class="run-drawer-overlay">
+      <div class="run-drawer">
         <div class="drawer-header">
           <h3>工作流运行</h3>
           <button @click="closeRunDrawer" class="close-btn">&times;</button>

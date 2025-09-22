@@ -13,6 +13,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
@@ -32,6 +33,9 @@ public class ZhipuaiServiceImpl implements ZhipuaiService {
     private AIConfigurationService configurationService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     @Override
     public Flux<String> streamChat(String message) {
@@ -98,5 +102,49 @@ public class ZhipuaiServiceImpl implements ZhipuaiService {
             log.error("初始化智谱AI流式服务失败", e);
             return Flux.error(new RuntimeException("初始化AI服务失败: " + e.getMessage()));
         }
+    }
+
+    @Override
+    public String chat(String message) {
+        // 获取智谱AI配置
+        AIConfigurationDTO config = configurationService.getConfigurationByProvider("zhipuai");
+        if (config == null || !StringUtils.hasText(config.getApiKey())) {
+            throw new RuntimeException("智谱AI配置未找到或API Key未配置");
+        }
+
+        String baseUrl = StringUtils.hasText(config.getBaseUrl()) ? config.getBaseUrl() : "https://open.bigmodel.cn/api/paas/v4";
+        String model = StringUtils.hasText(config.getModel()) ? config.getModel() : "glm-4";
+
+        // 构建请求体
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", model);
+        requestBody.put("stream", false);
+        requestBody.put("temperature", 0.7);
+        requestBody.put("max_tokens", 65535);
+
+        // 构建消息
+        Map<String, Object> userMessage = new HashMap<>();
+        userMessage.put("role", "user");
+        userMessage.put("content", message);
+        requestBody.put("messages", new Object[]{userMessage});
+
+        // 创建WebClient
+        WebClient webClient = WebClient.builder()
+                .baseUrl(baseUrl)
+                .defaultHeader("Authorization", "Bearer " + config.getApiKey())
+                .defaultHeader("Content-Type", "application/json")
+                .build();
+
+        log.info("开始调用智谱AI LangChain 非流式聊天，模型: {}", model);
+
+        return webClient.post()
+                .uri("/chat/completions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
     }
 }

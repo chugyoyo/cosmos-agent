@@ -94,7 +94,7 @@
             >
               <el-icon><Menu /></el-icon>
             </button>
-            
+
             <div class="breadcrumb">
               <span class="breadcrumb-item">{{ currentPage }}</span>
             </div>
@@ -192,14 +192,7 @@ const toggleSidebar = () => {
 }
 
 const currentPage = computed(() => {
-  const routeMap: Record<string, string> = {
-    '/': '首页',
-    '/settings': '设置',
-    '/testing': '智能测试',
-    '/agent': 'Agent管理',
-    '/chat': '智能聊天'
-  }
-  return routeMap[route.path] || '未知页面'
+  return route.name || '未知页面'
 })
 </script>
 
