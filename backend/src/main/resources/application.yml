@@ -1,3 +1,7 @@
+# Server Configuration
+server:
+  port: 8080
+
 spring:
   application:
     name: cosmos-agent
@@ -10,58 +14,20 @@ spring:
     driver-class-name: org.postgresql.Driver
   
   # MyBatis-Plus Configuration
-  mybatis-plus:
-    configuration:
-      map-underscore-to-camel-case: true
-      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-    mapper-locations: classpath:mapper/*.xml
-    global-config:
-      db-config:
-        table-prefix: ""
-        id-type: auto
-  
-  # Server Configuration
-  server:
-    port: 8080
-  
-  # CORS Configuration
-  mvc:
-    cors:
-      allowed-origins: "*"
-      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-      allowed-headers: "*"
-  
-  # Actuator Configuration
-  management:
-    endpoints:
-      web:
-        exposure:
-          include: health,info,metrics
-        base-path: /actuator
-    endpoint:
-      health:
-        show-details: always
-        probes:
-          enabled: true
-    metrics:
-      export:
-        prometheus:
-          enabled: true
-    info:
-      env:
-        enabled: true
-      build:
-        enabled: true
-      git:
-        enabled: true
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:mapper/*.xml
+  global-config:
+    db-config:
+      table-prefix: ""
+      id-type: auto
 
-# Application Info
-info:
-  app:
-    name: cosmos-agent
-    version: 1.0.0
-    description: AI Agent Workflow Management System
-  author: Chuguo Tech
-  build:
-    time: ${build.time}
-    version: ${project.version}
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
