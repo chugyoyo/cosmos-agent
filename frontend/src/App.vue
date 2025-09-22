@@ -75,7 +75,7 @@
       </aside>
 
       <!-- 主内容区域 -->
-      <main class="main-layout">
+      <main class="main-layout" :class="{ 'collapsed': isCollapsed }">
         <!-- 顶部导航栏 -->
         <header class="top-header">
           <div class="header-left">
@@ -433,6 +433,13 @@ const currentPage = computed(() => {
   flex-direction: column;
   overflow: hidden;
   background: var(--background-color);
+  margin-left: 0;
+  width: calc(100% - 280px);
+  transition: width var(--transition-normal);
+  
+  &.collapsed {
+    width: calc(100% - 64px);
+  }
 }
 
 // 顶部导航栏
@@ -634,7 +641,7 @@ const currentPage = computed(() => {
   }
   
   .main-layout {
-    margin-left: 280px;
+    width: calc(100% - 280px);
   }
   
   .page-content {
@@ -649,7 +656,7 @@ const currentPage = computed(() => {
   }
   
   .main-layout {
-    margin-left: 240px;
+    width: calc(100% - 240px);
   }
   
   .page-content {
@@ -661,7 +668,7 @@ const currentPage = computed(() => {
   }
   
   .main-layout.collapsed {
-    margin-left: 64px;
+    width: calc(100% - 64px);
   }
 }
 
@@ -693,7 +700,6 @@ const currentPage = computed(() => {
   }
   
   .main-layout {
-    margin-left: 0;
     width: 100%;
   }
   
@@ -816,7 +822,6 @@ const currentPage = computed(() => {
   }
   
   .main-layout {
-    margin-left: 0 !important;
     width: 100% !important;
   }
   
