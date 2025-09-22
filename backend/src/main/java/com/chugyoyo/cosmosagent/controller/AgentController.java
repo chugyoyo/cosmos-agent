@@ -51,8 +51,8 @@ public class AgentController {
         return ApiResp.success(updated);
     }
 
-    @DeleteMapping("/{id}/deleteAgent")
-    public ApiResp<Void> deleteAgent(@PathVariable Long id) {
+    @DeleteMapping("/deleteAgent")
+    public ApiResp<Void> deleteAgent(@RequestParam("id") Long id) {
         agentService.deleteAgent(id);
         return ApiResp.success();
     }

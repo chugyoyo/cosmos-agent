@@ -359,6 +359,31 @@
       </div>
     </div>
 
+    <!-- 编辑 Agent 模态框 -->
+    <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>编辑代理</h3>
+          <button @click="closeEditModal" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>代理名称:</label>
+            <input v-model="editingAgent.name" class="form-control" placeholder="输入代理名称"/>
+          </div>
+          <div class="form-group">
+            <label>描述:</label>
+            <textarea v-model="editingAgent.description" class="form-control" rows="3"
+                      placeholder="输入代理描述"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="saveAgent" class="btn btn-primary">保存</button>
+          <button @click="closeEditModal" class="btn btn-secondary">取消</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 工作流运行抽屉 -->
     <div v-if="showRunDrawer" class="run-drawer-overlay" @click="closeRunDrawer">
       <div class="run-drawer" @click.stop>
@@ -484,6 +509,8 @@ export default {
       showNodeModal: false,
       showLinkModal: false,
       showCreateModal: false,
+      showEditModal: false,
+      editingAgent: null,
       linkCreationMode: false,
       tempLinkSource: null,
       newAgent: {
@@ -1083,6 +1110,33 @@ export default {
     closeCreateModal() {
       this.showCreateModal = false;
     },
+    closeEditModal() {
+      this.showEditModal = false;
+      this.editingAgent = null;
+    },
+    async saveAgent() {
+      try {
+        const response = await agentApi.updateAgent(this.editingAgent.id, this.editingAgent);
+        const data = response.data.data || response.data;
+        
+        // 更新本地数据
+        const index = this.agents.findIndex(a => a.id === this.editingAgent.id);
+        if (index !== -1) {
+          this.agents[index] = data;
+        }
+        
+        // 如果编辑的是当前选中的 Agent，也要更新
+        if (this.currentAgent && this.currentAgent.id === this.editingAgent.id) {
+          this.currentAgent = data;
+        }
+        
+        this.showEditModal = false;
+        this.editingAgent = null;
+      } catch (error) {
+        console.error('保存 Agent 失败:', error);
+        alert('保存 Agent 失败，请重试');
+      }
+    },
 
     async createAgent() {
       try {
@@ -1510,7 +1564,8 @@ export default {
 
     editAgent(agent) {
       // 编辑 Agent 信息
-      console.log('编辑 Agent:', agent);
+      this.editingAgent = { ...agent };
+      this.showEditModal = true;
     },
 
     duplicateAgent(agent) {

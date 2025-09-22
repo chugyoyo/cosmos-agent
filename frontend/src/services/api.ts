@@ -42,7 +42,7 @@ export const agentApi = {
     params: { id }
   }),
   create: (agent: any) => api.post<ApiResponse<any>>('/agents/createAgent', agent),
-  saveUpdateAgent: (agent: any) => api.put<ApiResponse<any>>('/agents/saveUpdateAgent', agent),
+  updateAgent: (id: number, agent: any) => api.put<ApiResponse<any>>(`/agents/${id}/updateAgent`, agent),
   deleteAgent: (id: number) => api.delete<ApiResponse<void>>('/agents/deleteAgent', {
     params: { id }
   }),
