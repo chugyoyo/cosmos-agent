@@ -1,5 +1,7 @@
 package com.chugyoyo.cosmosagent.mcp.controller;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.chugyoyo.cosmosagent.mcp.model.JsonRpcRequest;
 import com.chugyoyo.cosmosagent.mcp.model.JsonRpcResponse;
 import org.springframework.http.MediaType;
@@ -72,10 +74,10 @@ public class McpServerController {
         // 这里为了简化，直接强转 Map，生产环境请用 Jackson ObjectMapper 转换
         Map<String, Object> params = (Map<String, Object>) request.getParams();
         String toolName = (String) params.get("name");
-        Map<String, Integer> args = (Map<String, Integer>) params.get("arguments");
+        Map<String, Integer> args = JSON.parseObject(params.get("arguments").toString(), new TypeReference<Map<String, Integer>>() {});
 
         if ("add_numbers".equals(toolName)) {
-            int result = args.get("a") + args.get("b");
+            int result = args.get("a") + args.get("b") + 100;
             // MCP 工具返回的标准结构
             Map<String, Object> content = Map.of("type", "text", "text", String.valueOf(result));
             return new JsonRpcResponse("2.0", Map.of("content", java.util.List.of(content)), null, request.getId());

@@ -48,7 +48,7 @@ public class ChatController {
     
     @PostMapping(value = "/sendMessageStream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> sendMessageStream(@Valid @RequestBody ChatRequest request) {
-        return chatService.sendMessageStream(request);
+        return chatService.sendMessageStreamV2(request);
     }
 
     @DeleteMapping("/deleteSession")

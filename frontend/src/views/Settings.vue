@@ -166,7 +166,7 @@ const saveConfiguration = async () => {
     await formRef.value.validate()
     
     if (editingConfig.value) {
-      await configurationApi.saveUpdateConfiguration({...configForm, id: editingConfig.value.id!})
+      await configurationApi.create({...configForm, id: editingConfig.value.id!})
       ElMessage.success('配置更新成功')
     } else {
       await configurationApi.create(configForm)

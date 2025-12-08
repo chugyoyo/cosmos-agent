@@ -3,6 +3,9 @@ package com.chugyoyo.cosmosagent.service;
 import com.chugyoyo.cosmosagent.dto.ChatRequest;
 import com.chugyoyo.cosmosagent.dto.ChatMessageDTO;
 import com.chugyoyo.cosmosagent.dto.ChatSessionDTO;
+import com.chugyoyo.cosmosagent.mcp.model.JsonRpcRequest;
+import com.chugyoyo.cosmosagent.mcp.model.JsonRpcResponse;
+import com.chugyoyo.cosmosagent.mcp.service.McpClientService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +15,8 @@ import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +27,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageService chatMessageService;
     private final ZhipuaiService zhipuaiService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final McpClientService mcpClientService;
 
     @Override
     @Transactional
@@ -79,6 +85,75 @@ public class ChatServiceImpl implements ChatService {
                     .doOnNext(content -> {
                         // 累积AI回复内容
                         log.debug("收到AI回复片段: {}", content);
+                        aiResponseBuilder.append(content);
+                    })
+                    .doOnComplete(() -> {
+                        // 流式响应完成，保存完整的AI回复
+                        String fullResponse = aiResponseBuilder.toString();
+                        if (!fullResponse.isEmpty()) {
+                            ChatMessageDTO aiMessage = new ChatMessageDTO();
+                            aiMessage.setSessionId(session.getId());
+                            aiMessage.setRole("assistant");
+                            aiMessage.setContent(fullResponse);
+                            chatMessageService.createMessage(aiMessage);
+                            log.info("AI回复完成并保存，会话ID: {}, 内容长度: {}", session.getId(), fullResponse.length());
+                        }
+                    })
+                    .onErrorResume(e -> {
+                        log.error("AI服务调用失败", e);
+                        // 即使出错也保存错误信息
+                        String errorMessage = "抱歉，AI服务暂时不可用，请稍后再试。";
+                        ChatMessageDTO errorMessageDto = new ChatMessageDTO();
+                        errorMessageDto.setSessionId(session.getId());
+                        errorMessageDto.setRole("assistant");
+                        errorMessageDto.setContent(errorMessage);
+                        chatMessageService.createMessage(errorMessageDto);
+                        return Flux.just(errorMessage);
+                    });
+
+        } catch (Exception e) {
+            log.error("处理流式消息失败", e);
+            return Flux.error(new RuntimeException("处理消息失败: " + e.getMessage()));
+        }
+    }
+
+    @Override
+    public Flux<String> sendMessageStreamV2(ChatRequest request) {
+        try {
+            // 获取或创建会话
+            ChatSessionDTO session;
+            if (request.getSessionId() != null) {
+                session = chatSessionService.getSessionById(request.getSessionId());
+                if (session == null) {
+                    return Flux.error(new RuntimeException("会话不存在"));
+                }
+            } else {
+                session = createOrGetSession(request.getAgentId(), "默认会话 " + LocalDateTime.now());
+            }
+
+            // 保存用户消息
+            ChatMessageDTO userMessage = new ChatMessageDTO();
+            userMessage.setSessionId(session.getId());
+            userMessage.setRole("user");
+            userMessage.setContent(request.getMessage());
+            chatMessageService.createMessage(userMessage);
+
+            // 从MCP获取工具列表
+            List<Map<String, Object>> tools = mcpClientService.fetchAndConvertMcpTools();
+
+            // 使用LangChain4j调用智谱AI服务获取流式回复
+            List<ChatMessageDTO> messages = chatMessageService.getMessagesBySessionId(request.getSessionId());
+            StringBuilder aiResponseBuilder = new StringBuilder();
+            List<Map<String, Object>> collect = messages.stream().map(
+                    msg -> Map.of(
+                            "role", msg.getRole(),
+                            "content", (Object) msg.getContent()
+                    )
+            ).collect(Collectors.toList());
+            return zhipuaiService.streamChat(collect, tools)
+                    .doOnNext(content -> {
+                        // 累积AI回复内容
+                        log.info("收到AI回复片段: {}", content);
                         aiResponseBuilder.append(content);
                     })
                     .doOnComplete(() -> {

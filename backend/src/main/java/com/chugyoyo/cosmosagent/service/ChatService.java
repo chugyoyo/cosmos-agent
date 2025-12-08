@@ -12,7 +12,14 @@ public interface ChatService {
     ChatSessionDTO createOrGetSession(Long agentId, String sessionName);
 
     Flux<String> sendMessageStream(ChatRequest request);
-    
+
+    /**
+     * 使用 tools、上下文
+     * @param request
+     * @return
+     */
+    Flux<String> sendMessageStreamV2(ChatRequest request);
+
     ChatSessionDTO getDefaultSessionByAgentId(Long agentId);
     
     List<ChatSessionDTO> getAgentSessions(Long agentId);

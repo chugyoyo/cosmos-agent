@@ -41,16 +41,16 @@ CREATE TABLE agent
 drop table if exists agent_node;
 CREATE TABLE agent_node
 (
-    id          BIGSERIAL PRIMARY KEY,
-    agent_id    BIGINT       NOT NULL,
-    name        VARCHAR(255) NOT NULL,
-    type        VARCHAR(100) NOT NULL,
-    status      INTEGER   DEFAULT 1,
-    position_x  INTEGER      NOT NULL,
-    position_y  INTEGER      NOT NULL,
-    config      TEXT,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id         BIGSERIAL PRIMARY KEY,
+    agent_id   BIGINT       NOT NULL,
+    name       VARCHAR(255) NOT NULL,
+    type       VARCHAR(100) NOT NULL,
+    status     INTEGER   DEFAULT 1,
+    position_x INTEGER      NOT NULL,
+    position_y INTEGER      NOT NULL,
+    config     TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 创建索引
@@ -112,3 +112,16 @@ CREATE INDEX idx_chat_session_created_at ON chat_session (created_at);
 CREATE INDEX idx_chat_message_session_id ON chat_message (session_id);
 CREATE INDEX idx_chat_message_created_at ON chat_message (created_at);
 CREATE INDEX idx_chat_message_role ON chat_message (role);
+
+
+-- 为 agent_node 表添加 llmConfig 和 startConfig 字段
+ALTER TABLE agent_node
+    ADD COLUMN llm_config   TEXT,
+    ADD COLUMN start_config TEXT;
+
+-- 更新现有记录，为它们设置默认的配置值
+UPDATE agent_node
+SET llm_config   = '{"model":"gpt-3.5-turbo","systemPrompt":"","userPrompt":"","temperature":0.7,"maxTokens":1000,"inputVariables":[]}',
+    start_config = '{"inputVariables":[]}'
+WHERE llm_config IS NULL
+   OR start_config IS NULL;
