@@ -1,4 +1,5 @@
-import com.chugyoyo.cosmosagent.CosmosAgentApplication;
+package com.chugyoyo.cosmosagent;
+
 import com.chugyoyo.cosmosagent.common.LlmProvierEnum;
 import com.chugyoyo.cosmosagent.dto.AIConfigurationDTO;
 import com.chugyoyo.cosmosagent.mcp.server.SimpleTools;
