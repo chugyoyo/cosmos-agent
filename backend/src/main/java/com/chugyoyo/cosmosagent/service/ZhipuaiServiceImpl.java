@@ -2,8 +2,7 @@ package com.chugyoyo.cosmosagent.service;
 
 import com.alibaba.fastjson2.JSON;
 import com.chugyoyo.cosmosagent.dto.AIConfigurationDTO;
-import com.chugyoyo.cosmosagent.dto.ChatMessageDTO;
-import com.chugyoyo.cosmosagent.mcp.service.McpClientService;
+import com.chugyoyo.cosmosagent.mcp.client.McpClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
@@ -42,7 +41,7 @@ public class ZhipuaiServiceImpl implements ZhipuaiService {
     @Autowired
     private RestTemplate restTemplate;
     @Autowired
-    private McpClientService mcpClientService;
+    private McpClient mcpClient;
 
     @Override
     public Flux<String> streamChat(String message) {
@@ -255,7 +254,7 @@ public class ZhipuaiServiceImpl implements ZhipuaiService {
                     log.info("Tool Call Detected: {} with args {}", ctx.toolName, ctx.toolArgsBuffer);
 
                     // 6.1 执行工具 (这里是模拟，你需要调用你的 MCP Client)
-                    String toolResult = mcpClientService.executeMcpTool(ctx.toolName, ctx.toolArgsBuffer.toString());
+                    String toolResult = mcpClient.executeMcpTool(ctx.toolName, ctx.toolArgsBuffer.toString());
 
                     // 6.2 更新对话历史
                     // (1) 添加 Assistant 的 Tool Call 消息

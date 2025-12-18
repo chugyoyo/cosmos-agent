@@ -1,4 +1,4 @@
-package com.chugyoyo.cosmosagent.mcp.controller;
+package com.chugyoyo.cosmosagent.mcp.server;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;

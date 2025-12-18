@@ -3,9 +3,7 @@ package com.chugyoyo.cosmosagent.service;
 import com.chugyoyo.cosmosagent.dto.ChatRequest;
 import com.chugyoyo.cosmosagent.dto.ChatMessageDTO;
 import com.chugyoyo.cosmosagent.dto.ChatSessionDTO;
-import com.chugyoyo.cosmosagent.mcp.model.JsonRpcRequest;
-import com.chugyoyo.cosmosagent.mcp.model.JsonRpcResponse;
-import com.chugyoyo.cosmosagent.mcp.service.McpClientService;
+import com.chugyoyo.cosmosagent.mcp.client.McpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +25,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageService chatMessageService;
     private final ZhipuaiService zhipuaiService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final McpClientService mcpClientService;
+    private final McpClient mcpClient;
 
     @Override
     @Transactional
@@ -139,7 +137,7 @@ public class ChatServiceImpl implements ChatService {
             chatMessageService.createMessage(userMessage);
 
             // 从MCP获取工具列表
-            List<Map<String, Object>> tools = mcpClientService.fetchAndConvertMcpTools();
+            List<Map<String, Object>> tools = mcpClient.fetchAndConvertMcpTools();
 
             // 使用LangChain4j调用智谱AI服务获取流式回复
             List<ChatMessageDTO> messages = chatMessageService.getMessagesBySessionId(request.getSessionId());

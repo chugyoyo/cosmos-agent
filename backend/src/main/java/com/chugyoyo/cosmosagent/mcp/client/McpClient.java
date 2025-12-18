@@ -1,4 +1,4 @@
-package com.chugyoyo.cosmosagent.mcp.service;
+package com.chugyoyo.cosmosagent.mcp.client;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.chugyoyo.cosmosagent.mcp.model.JsonRpcRequest;
@@ -14,12 +14,12 @@ import java.util.Map;
 
 @Slf4j
 @Service
-public class McpClientService {
+public class McpClient {
 
     private final RestClient restClient;
     private final String SERVER_URL = "http://localhost:8080/mcp";
 
-    public McpClientService(RestClient.Builder builder) {
+    public McpClient(RestClient.Builder builder) {
         this.restClient = builder.baseUrl(SERVER_URL).build();
     }
 
