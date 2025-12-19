@@ -5,8 +5,9 @@ import com.chugyoyo.cosmosagent.dto.AIConfigurationDTO;
 import com.chugyoyo.cosmosagent.mcp.server.ApiInvokerTools;
 import com.chugyoyo.cosmosagent.mcp.server.ClassInspectorTools;
 import com.chugyoyo.cosmosagent.mcp.server.DatabaseTools;
+import com.chugyoyo.cosmosagent.mcp.server.FileSystemTools;
 import com.chugyoyo.cosmosagent.mcp.server.ProjectDocTools;
-import com.chugyoyo.cosmosagent.mcp.server.ReportingTools;
+import com.chugyoyo.cosmosagent.mcp.server.SubTaskAutomationTool;
 import com.chugyoyo.cosmosagent.service.AIConfigurationService;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.message.Msg;
@@ -37,40 +38,50 @@ public class AgenticTest {
 
     @Test
     public void test() {
-        // get configuration by provider
-        AIConfigurationDTO configuration = aiConfigurationService.getConfigurationByProvider(LlmProvierEnum.DASHSCOPE);
+        AIConfigurationDTO config = aiConfigurationService.getConfigurationByProvider(LlmProvierEnum.DASHSCOPE);
 
-        // Prepare tools
-        Toolkit toolkit = new Toolkit();
-        toolkit.registerTool(new ProjectDocTools(applicationContext));
-        toolkit.registerTool(new ClassInspectorTools());
-        toolkit.registerTool(new ReportingTools());
-        toolkit.registerTool(new ApiInvokerTools(restTemplate));
-        DatabaseTools.setDataSource(dataSource);
-        toolkit.registerTool(new DatabaseTools());
+        // 1. 准备底层的原子工具
+        Toolkit atomicToolkit = new Toolkit();
+        atomicToolkit.registerTool(new ProjectDocTools(applicationContext));
+        atomicToolkit.registerTool(new DatabaseTools());
+        atomicToolkit.registerTool(new ApiInvokerTools(restTemplate));
+        atomicToolkit.registerTool(new FileSystemTools());
 
-        ReActAgent agent = ReActAgent.builder()
-                .name("Assistant")
-                .sysPrompt("你是一个有 10 年互联网大厂经验的测试专家，请根据提供的 API 文档，回答用户的问题")
-                .model(DashScopeChatModel.builder()
-                        .apiKey(configuration.getApiKey())
-                        .modelName("qwen-max")
-                        .build())
-                .toolkit(toolkit)
+        // 2. 注册“递归任务工具”
+        Toolkit orchestratorToolkit = new Toolkit();
+        // 这里把原子工具传进去，让子智能体也能用
+        orchestratorToolkit.registerTool(new SubTaskAutomationTool(config.getApiKey(), atomicToolkit));
+        // 主 Agent 也可以拥有发现 API 的能力，以便它进行规划
+        orchestratorToolkit.registerTool(new ProjectDocTools(applicationContext));
+        orchestratorToolkit.registerTool(new DatabaseTools());
+        orchestratorToolkit.registerTool(new ApiInvokerTools(restTemplate));
+        orchestratorToolkit.registerTool(new FileSystemTools());
+
+
+        // 3. 初始化主智能体（模仿 Claude Code 模式）
+        String prompt = """
+                你是一个拥有 10 年互联网大厂测试经验的测试专家，需要完成给定的任务。
+                """;
+        ReActAgent leadAgent = ReActAgent.builder()
+                .name("LeadAgent")
+                .sysPrompt(prompt)
+                .model(DashScopeChatModel.builder().apiKey(config.getApiKey()).modelName("qwen-max").build())
+                .toolkit(orchestratorToolkit)
                 .build();
 
-        String content = """
-                请对项目里的所有接口进行一轮流程测试，然后将测试报告写到本地文件中，必要时可以调用工具。
+        // 4. 下达宏观指令
+        String userPrompt = """
+                当前任务：请全面测试项目中的所有 /agent/、/chat/ 路径的接口
+                拆分子任务 1: 查看是否有 API DOC 文件，如果有则跳过，否则新建文件 api-docs.md
+                拆分子任务 2: 若文件 api-docs.md 为空，获取最新的 API DOC 内容，然后写入该文件
+                拆分子任务 3: 读取 api-docs.md，生成测试计划，将测试计划写入 api-test-plan.md
+                拆分子任务 4: 根据 api-test-plan.md 中的测试计划，执行测试用例，将测试结果写入 api-test-results.md
+                
                 注意：
-                1. 如果错误的话，可以找原因然后想方法去执行，必要时可以查询 SQL 去数据库里找数据
-                2. 如果失败超过 10 次，这个接口将不再进行测试，标记最后一次失败的原因
-                3. 请保证所有接口都被测试过
-                4. 面对 /mcp/sse 接口不测试
-                5. 像 ../{id}/.. 这种路径参数，直接替换为测试的变量，然后进行请求
+                - 请一步一步地思考。
+                - 子任务执行是调用 execute_subtask 工具，任务内容必须清晰、上下文完整。
                 """;
-        Msg response = agent.call(Msg.builder()
-                .textContent(content)
-                .build()).block();
-        System.out.println(response.getTextContent());
+        Msg msg = leadAgent.call(Msg.builder().textContent(userPrompt).build()).block();
+        System.out.println(msg.getTextContent());
     }
 }
